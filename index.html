@@ -157,7 +157,7 @@ ul{margin:6px 0;padding-left:20px}
       <div class="row"><button class="pink small" id="stopHostBtn">Stop sharing</button></div>
     </div>
     <p class="note" id="inviteMsg" role="status"></p>
-    <p class="note">If a friend can't connect, try having both of you on the same Wi-Fi. Some phone networks block direct connections.</p>
+    <p class="note">If a friend can't connect, check that both of you have internet and reloaded the page, then try a new code.</p>
   </div></div>
 
   <div class="ov" id="craft"><div class="card wide">
@@ -613,15 +613,77 @@ function netLocal(op, i){
   if (NET.role==='host') broadcast({t:'set', c:[[i, G.tiles[i], G.meta[i]]]});
   else if (NET.role==='guest') netSend({t:'edit', op, i, tile:G.tiles[i]});
 }
+/* Relay: phones talk through a free public message relay (MQTT over a normal secure web connection)
+   instead of a direct phone-to-phone link, so it works on home Wi-Fi and cell data alike.
+   It looks just like the old PeerJS helper to the rest of the game. */
+const RELAY={urls:['wss://broker.hivemq.com:8884/mqtt','wss://broker.emqx.io:8084/mqtt'],root:'wickline-arcade/v1/'};
 function loadPeerLib(){
-  if (window.Peer) return Promise.resolve();
-  if (NET.loading) return NET.loading;
-  const urls=['https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js','https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'];
-  NET.loading = new Promise((res, rej) => { let k=0;
-    const next = () => { if (k>=urls.length){ NET.loading=null; rej(Error('lib')); return; }
-      const s=document.createElement('script'); s.src=urls[k++]; s.onload=() => window.Peer ? res() : next(); s.onerror=next; document.head.appendChild(s); };
+  if(window.ArcadePeer) return Promise.resolve();
+  if(window.mqtt){ installRelay(); return Promise.resolve(); }
+  if(NET.loading) return NET.loading;
+  const libs=['https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js','https://cdn.jsdelivr.net/npm/mqtt@4.3.7/dist/mqtt.min.js'];
+  NET.loading=new Promise((res,rej)=>{ let k=0;
+    const next=()=>{ if(k>=libs.length){ NET.loading=null; rej(Error('lib')); return; }
+      const sc=document.createElement('script'); sc.src=libs[k++]; sc.onload=()=>{ if(window.mqtt){ installRelay(); res(); } else next(); }; sc.onerror=next; document.head.appendChild(sc); };
     next(); });
   return NET.loading;
+}
+function installRelay(){
+  if(window.ArcadePeer) return;
+  const R=RELAY.root, rid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+  class Emit{ constructor(){ this._h={}; } on(e,f){ (this._h[e]=this._h[e]||[]).push(f); return this; }
+    emit(e,...a){ (this._h[e]||[]).slice().forEach(f=>{ try{ f(...a); }catch(err){ console.error(err); } }); } }
+  class Conn extends Emit{
+    constructor(peer,other,cid){ super(); this.peer=peer; this.other=other; this.cid=cid; this.open=false; this.last=Date.now(); this.sent=Date.now(); }
+    _open(){ if(this.open) return; this.open=true; this._pending=false; this.last=Date.now(); this.emit('open'); }
+    send(d){ if(!this.open) return; this.sent=Date.now(); this.peer._pub(this.other,{k:'data',cid:this.cid,d}); }
+    close(){ const was=this.open; if(!was&&!this._pending) return; this.open=false; this._pending=false; this.peer._pub(this.other,{k:'close',cid:this.cid}); delete this.peer.conns[this.cid]; if(was) this.emit('close'); }
+    _drop(){ if(!this.open) return; this.open=false; delete this.peer.conns[this.cid]; this.emit('close'); }
+  }
+  class Peer extends Emit{
+    constructor(id){ super(); this.id=id||('g-'+rid()); this.claim=!!id; this.conns={}; this.dead=false; this._tick=setInterval(()=>this._beat(),2500); setTimeout(()=>this._connect(0),0); }
+    _connect(k){
+      if(this.dead) return;
+      const url=RELAY.urls[k]; if(!url){ this.emit('error',{type:'network'}); return; }
+      const opts={clientId:'wa_'+rid(),keepalive:20,reconnectPeriod:2000,connectTimeout:8000,clean:true};
+      if(this.claim) opts.will={topic:R+'here/'+this.id,payload:'',retain:true,qos:0};
+      let c; try{ c=mqtt.connect(url,opts); }catch(e){ this._connect(k+1); return; }
+      this.c=c; let ok=false;
+      const giveUp=setTimeout(()=>{ if(!ok){ try{ c.end(true); }catch(e){} this._connect(k+1); } },9000);
+      c.on('connect',()=>{
+        if(ok){ c.subscribe(R+'p/'+this.id); if(this.claim) c.publish(R+'here/'+this.id,'1',{retain:true}); return; }
+        ok=true; clearTimeout(giveUp);
+        c.subscribe(R+'p/'+this.id,{qos:0},()=>{
+          if(!this.claim){ this.emit('open',this.id); return; }
+          this._exists(this.id).then(taken=>{ if(this.dead) return; if(taken){ this.emit('error',{type:'unavailable-id'}); this.destroy(); }
+            else { c.publish(R+'here/'+this.id,'1',{retain:true}); this.emit('open',this.id); } }); });
+      });
+      c.on('message',(topic,buf)=>this._msg(topic,buf));
+      c.on('offline',()=>this.emit('disconnected'));
+    }
+    _exists(id){ return new Promise(res=>{ const c=this.c, t=R+'here/'+id; let done=false;
+      const fin=v=>{ if(done) return; done=true; try{ c.removeListener('message',h); c.unsubscribe(t); }catch(e){} res(v); };
+      const h=(topic,buf)=>{ if(topic===t) fin(String(buf)==='1'); };
+      c.on('message',h); c.subscribe(t); setTimeout(()=>fin(false),1500); }); }
+    _pub(to,m){ if(this.dead||!this.c) return; m.from=this.id; try{ this.c.publish(R+'p/'+to,JSON.stringify(m)); }catch(e){} }
+    _msg(topic,buf){
+      if(topic!==R+'p/'+this.id) return; let m; try{ m=JSON.parse(String(buf)); }catch(e){ return; } if(!m||!m.cid) return;
+      let c=this.conns[m.cid];
+      if(m.k==='connect'){ if(c) return; c=new Conn(this,m.from,m.cid); this.conns[m.cid]=c; this.emit('connection',c); this._pub(m.from,{k:'accept',cid:m.cid}); setTimeout(()=>c._open(),50); return; }
+      if(!c) return; c.last=Date.now();
+      if(m.k==='accept') c._open();
+      else if(m.k==='data'){ if(!c.open) c._open(); c.emit('data',m.d); }
+      else if(m.k==='close') c._drop();
+    }
+    _beat(){ const t=Date.now(); for(const c of Object.values(this.conns)){ if(c.open&&t-c.sent>2400){ c.sent=t; this._pub(c.other,{k:'ping',cid:c.cid}); } if(c.open&&t-c.last>12000) c._drop(); } }
+    connect(id){ const cid=rid(), c=new Conn(this,id,cid); c._pending=true; this.conns[cid]=c;
+      this._exists(id).then(ok=>{ if(this.dead) return; if(!ok){ delete this.conns[cid]; this.emit('error',{type:'peer-unavailable'}); return; } this._pub(id,{k:'connect',cid}); });
+      return c; }
+    reconnect(){}
+    destroy(){ if(this.dead) return; for(const c of Object.values(this.conns)) c.close(); this.dead=true; clearInterval(this._tick);
+      try{ if(this.claim&&this.c) this.c.publish(R+'here/'+this.id,'',{retain:true}); }catch(e){} const c=this.c; setTimeout(()=>{ try{ c&&c.end(true); }catch(e){} },200); }
+  }
+  window.ArcadePeer=Peer;
 }
 function worldPayload(){ const on=[]; for (let i=0;i<W*H;i++) if (G.meta[i]) on.push(i);
   return {name:G.name, seed:G.seed, mode:G.mode, power:G.power, tiles:rle(G.tiles), on, spawn:G.spawn, ch:G.charge||{}}; }
@@ -633,7 +695,7 @@ async function hostStart(){
   try { await loadPeerLib(); } catch(e){ inviteStatus("Couldn't load the multiplayer helper. Check your internet connection and try again."); return; }
   const open = attempt => {
     const code = Array.from({length:4}, () => CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
-    let peer; try { peer = new Peer(PEER_PREFIX+code); } catch(e){ inviteStatus("Couldn't start sharing."); return; }
+    let peer; try { peer = new ArcadePeer(PEER_PREFIX+code); } catch(e){ inviteStatus("Couldn't start sharing."); return; }
     peer.on('open', () => { if (!G){ peer.destroy(); return; } NET.role='host'; NET.peer=peer; NET.code=code; renderInvite(); say(`Friends can join with code ${code}.`, 6); });
     peer.on('connection', conn => hostConn(conn));
     peer.on('disconnected', () => { try { peer.reconnect(); } catch(e){} });
@@ -686,10 +748,10 @@ async function joinGame(rawCode, name){
   try { await loadPeerLib(); } catch(e){ return reset("Couldn't load the multiplayer helper. Check your internet connection."); }
   const m=me(); m.name=setMyName(name);
   let done=false, peer;
-  try { peer = new Peer(); } catch(e){ return reset("Couldn't connect."); }
+  try { peer = new ArcadePeer(); } catch(e){ return reset("Couldn't connect."); }
   NET.peer = peer;
   const fail = t => { if (done) return; done=true; clearTimeout(timer); try { peer.destroy(); } catch(e){} NET.peer=null; NET.conn=null; reset(t); };
-  const timer = setTimeout(() => fail("Couldn't reach that game. Check the code, make sure the host's game is open with Invite friends on, and try again. Being on the same Wi-Fi helps."), 15000);
+  const timer = setTimeout(() => fail("Couldn't reach that game. Check the code, make sure the host's game is open with Invite friends on, and try again. Reloading both pages can help."), 15000);
   peer.on('error', err => {
     if (!done){ fail(err && err.type==='peer-unavailable' ? 'No game with that code right now. Check the code, and make sure the host has Invite friends turned on.' : "Couldn't connect. Check your internet and try again."); }
   });
