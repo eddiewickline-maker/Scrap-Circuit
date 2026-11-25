@@ -119,9 +119,14 @@ ul{margin:6px 0;padding-left:20px}
       <label><input type="radio" name="gmode" value="survival" checked> Survival</label>
       <label><input type="radio" name="gmode" value="creative"> Creative</label></div>
     <div class="choice" role="radiogroup" aria-label="Electricity"><span>Electricity</span>
+      <label><input type="radio" name="pmode" value="simple"> Simple</label>
       <label><input type="radio" name="pmode" value="real" checked> Realistic</label>
-      <label><input type="radio" name="pmode" value="simple"> Simple</label></div>
-    <p class="note">Creative: unlimited parts, no bots, flying, instant digging. Simple electricity: anything touching a battery works, with no + and − sides and no short circuits. Good for friends and little brothers.</p>
+      <label><input type="radio" name="pmode" value="advanced"> Advanced</label></div>
+    <p class="note">Creative: unlimited parts, no bots, flying, instant digging. Simple: anything touching a battery works. Good for friends and little brothers. Advanced: batteries run down, LEDs burn out without a resistor.</p>
+    <h3>Play with friends</h3>
+    <p class="note">Ask the host for their 4-letter invite code. The host's game has to stay open while you play.</p>
+    <div class="row"><input id="joinName" maxlength="14" placeholder="Your name" aria-label="Your name" style="flex:1 1 140px"><input id="joinCode" maxlength="4" placeholder="CODE" aria-label="Invite code" style="flex:0 1 110px;text-transform:uppercase;letter-spacing:.15em;font-weight:700"><button id="joinBtn">Join</button></div>
+    <p class="note" id="joinMsg" role="status"></p>
     <h3>Your worlds</h3>
     <div id="worlds"></div>
     <p class="note" id="storeNote"></p>
@@ -136,7 +141,23 @@ ul{margin:6px 0;padding-left:20px}
   <div class="ov" id="pause"><div class="card">
     <h2>Paused</h2>
     <p class="note" id="pauseNote">Your world saves itself every few seconds.</p>
-    <div class="row"><button id="resumeBtn">Resume</button><button id="pauseCodeBtn">Save code</button><button class="pink" id="quitBtn">Save and quit</button></div>
+    <div class="row"><button id="resumeBtn">Resume</button><button id="inviteBtn">Invite friends</button><button id="pauseCodeBtn">Save code</button><button class="pink" id="quitBtn">Save and quit</button></div>
+  </div></div>
+
+  <div class="ov" id="invite"><div class="card">
+    <div class="row" style="justify-content:space-between;margin:0"><h2>Invite friends</h2><button class="small" id="inviteClose">Back to game</button></div>
+    <div id="inviteOff">
+      <p class="note">Your friends type your invite code on their main menu, under "Play with friends." Up to 3 friends can join. Keep your game open while they play. Your world saves on your device, and they keep their stuff for next time.</p>
+      <div class="row"><input id="hostName" maxlength="14" placeholder="Your name" aria-label="Your name" style="flex:1 1 160px"><button id="hostBtn">Get an invite code</button></div>
+    </div>
+    <div id="inviteOn" style="display:none">
+      <p class="note">Your invite code:</p>
+      <p id="inviteCode" style="font-size:52px;line-height:1;font-weight:700;letter-spacing:.2em;color:var(--lime);margin:6px 0 10px"></p>
+      <p class="note" id="invitePlayers"></p>
+      <div class="row"><button class="pink small" id="stopHostBtn">Stop sharing</button></div>
+    </div>
+    <p class="note" id="inviteMsg" role="status"></p>
+    <p class="note">If a friend can't connect, try having both of you on the same Wi-Fi. Some phone networks block direct connections.</p>
   </div></div>
 
   <div class="ov" id="craft"><div class="card wide">
@@ -173,10 +194,18 @@ ul{margin:6px 0;padding-left:20px}
     <ul><li><b>Transistor:</b> a switch that electricity flips. Current goes through it left to right, but only while the wire touching its top or bottom has power.</li>
     <li><b>Motion sensor:</b> closes like a switch for a moment when something moves nearby.</li>
     <li><b>Buzzer:</b> beeps while powered. Battery + motion sensor + buzzer in a loop = burglar alarm.</li>
-    <li><b>Electromagnet:</b> only a magnet while current flows. It pulls bots in and holds them stuck. Switch it off to let go.</li></ul>
+    <li><b>Electromagnet:</b> only a magnet while current flows. It pulls bots in and holds them stuck. Switch it off to let go.</li>
+    <li><b>Resistor:</b> slows the current down. LEDs need one in Advanced electricity.</li>
+    <li><b>AND, OR, NOT gates:</b> smart switches. Like a transistor, current goes through left to right, and the wires on the top and bottom decide. AND needs both on, OR needs either one, NOT needs neither. Computers are built from billions of these.</li>
+    <li><b>Crank generator:</b> right-click it (or tap it in Build) to charge batteries touching it.</li></ul>
+    <h3>Playing with friends</h3>
+    <ul><li><b>Host:</b> pause, tap <b>Invite friends</b>, and tap <b>Get an invite code</b>. Keep your game open while friends play.</li>
+    <li><b>Friend:</b> on the main menu, type your name and the code under <b>Play with friends</b>, and tap Join.</li>
+    <li>The world saves on the host's device. Friends keep their stuff for the next time they join that world.</li></ul>
     <h3>Modes</h3>
     <ul><li><b>Creative:</b> unlimited parts, no bots, instant digging. Hold W or ▲ to fly up and S or ▼ to go down.</li>
     <li><b>Simple electricity:</b> anything touching a battery works. No + and − sides, no short circuits.</li>
+    <li><b>Advanced electricity:</b> batteries slowly run down (point at one to see its %). Bigger parts drain them faster, and electromagnets drain fastest. A short circuit drains a battery in seconds. An LED with no resistor in its loop burns out. Recharge batteries with a crank generator placed right next to them.</li>
     <li>You pick both when you make a new world.</li></ul>
     <h3>Scavenging</h3>
     <ul><li>Old TVs, radios and laptops are full of parts. Dig them out.</li>
@@ -227,9 +256,16 @@ const TILES = [
   {n:'Transistor', hard:.2, drop:'transistor', comp:1},
   {n:'Electromagnet', hard:.4, drop:'magnet', comp:1, load:1},
   {n:'Motion sensor', hard:.25, drop:'sensor', comp:1},
-  {n:'Buzzer', hard:.2, drop:'buzzer', comp:1, load:1}
+  {n:'Buzzer', hard:.2, drop:'buzzer', comp:1, load:1},
+  {n:'Resistor', hard:.15, drop:'resistor', comp:1, load:1},
+  {n:'Burnt-out LED', hard:.15, drop:'scrap', comp:1},
+  {n:'AND gate', hard:.2, drop:'and', comp:1},
+  {n:'OR gate', hard:.2, drop:'or', comp:1},
+  {n:'NOT gate', hard:.2, drop:'not', comp:1},
+  {n:'Crank generator', hard:.4, drop:'crank', comp:1}
 ];
-const ID = {air:0,moss:1,dirt:2,concrete:3,stone:4,brick:5,plate:6,copper:7,scrap:8,tv:9,radio:10,laptop:11,bedrock:12,wire:13,battery:14,switch:15,led:16,lamp:17,motor:18,door:19,transistor:20,magnet:21,sensor:22,buzzer:23};
+const ID = {air:0,moss:1,dirt:2,concrete:3,stone:4,brick:5,plate:6,copper:7,scrap:8,tv:9,radio:10,laptop:11,bedrock:12,wire:13,battery:14,switch:15,led:16,lamp:17,motor:18,door:19,transistor:20,magnet:21,sensor:22,buzzer:23,resistor:24,burnt:25,and:26,or:27,not:28,crank:29};
+const GATES = new Set([20,26,27,28]);
 const ITEMS = {
   wire:{name:'Wire', tile:13, info:"Carries electricity. Power flows out of the battery's + end, through your parts, and back into the − end."},
   battery:{name:'Battery', tile:14, info:'Stores energy. + is on the right end, − on the left. Nothing runs until there is a complete loop from + back to −.'},
@@ -242,6 +278,11 @@ const ITEMS = {
   sensor:{name:'Motion sensor', tile:22, info:'Works like a switch that closes by itself when something moves nearby, then opens again. Real ones see body heat.'},
   magnet:{name:'Electromagnet', tile:21, info:'A coil of copper wire around iron. It is only a magnet while current flows. It pulls bots in and holds them stuck.'},
   buzzer:{name:'Buzzer', tile:23, info:'Beeps while it has power. Wire it up with a motion sensor and you have a burglar alarm.'},
+  resistor:{name:'Resistor', tile:24, info:'Slows the current down. In Advanced electricity an LED needs one in its loop or it burns out. The colored stripes on real ones tell how strong they are.'},
+  and:{name:'AND gate', tile:26, info:'Lets current through left to right only when the wires on its top AND bottom both have power.'},
+  or:{name:'OR gate', tile:27, info:'Lets current through left to right when the wire on its top OR its bottom has power (or both).'},
+  not:{name:'NOT gate', tile:28, info:'The opposite: lets current through only when its top and bottom wires have NO power. Real gates are built from transistors.'},
+  crank:{name:'Crank generator', tile:29, info:'Right-click it (or tap it in Build) to crank. It charges any battery touching it. It is a motor run backwards: spinning a coil past magnets makes electricity.'},
   plate:{name:'Metal plate', tile:6, info:'A tough building block.'},
   dirt:{name:'Dirt', tile:2, info:'Building block.'},
   concrete:{name:'Concrete', tile:3, info:'Building block.'},
@@ -250,7 +291,7 @@ const ITEMS = {
   copper:{name:'Copper', info:'Copper ore. Real wires are made of copper. Make wire with it at the workbench (C).'},
   scrap:{name:'Scrap metal', info:'Junk metal. Use it at the workbench (C).'}
 };
-const ITEM_ORDER = ['wire','battery','switch','led','lamp','motor','door','transistor','sensor','magnet','buzzer','plate','dirt','concrete','stone','brick','copper','scrap'];
+const ITEM_ORDER = ['wire','battery','switch','led','resistor','lamp','motor','door','transistor','sensor','magnet','buzzer','and','or','not','crank','plate','dirt','concrete','stone','brick','copper','scrap'];
 const DEFAULT_SLOTS = ['wire','battery','switch','led','lamp','motor','door','plate','dirt'];
 const RECIPES = [
   {out:'wire', n:4, need:{copper:1}, why:'Electricity moves through copper easily.'},
@@ -263,13 +304,19 @@ const RECIPES = [
   {out:'transistor', n:2, need:{scrap:1, copper:1}, why:'Real ones are made from silicon, the stuff in sand.'},
   {out:'sensor', n:1, need:{led:1, wire:1, scrap:1}},
   {out:'buzzer', n:1, need:{scrap:1, wire:1}},
-  {out:'magnet', n:1, need:{plate:1, copper:2}, why:'Wrap copper wire around iron and run current through it.'}
+  {out:'magnet', n:1, need:{plate:1, copper:2}, why:'Wrap copper wire around iron and run current through it.'},
+  {out:'resistor', n:2, need:{scrap:1, wire:1}},
+  {out:'and', n:1, need:{transistor:2, wire:1}, why:'Two transistors in a row: both have to be on.'},
+  {out:'or', n:1, need:{transistor:2, wire:1}, why:'Two transistors side by side: either one can be on.'},
+  {out:'not', n:1, need:{transistor:1, resistor:1}},
+  {out:'crank', n:1, need:{motor:1, scrap:2}, why:'Spin a motor by hand and it makes electricity.'}
 ];
 const SALVAGE = {
-  tv:{name:'an old TV', loot:[['led',2],['wire',3],['scrap',2]], extra:[['switch',1,.4],['transistor',1,.5]]},
-  radio:{name:'an old radio', loot:[['switch',1],['wire',3],['scrap',1]], extra:[['battery',1,.5],['transistor',2,.6],['buzzer',1,.35]]},
-  laptop:{name:'an old laptop', loot:[['battery',2],['led',1],['wire',2]], extra:[['motor',1,.7],['transistor',2,.7]]}
+  tv:{name:'an old TV', loot:[['led',2],['wire',3],['scrap',2]], extra:[['switch',1,.4],['transistor',1,.5],['resistor',3,.8]]},
+  radio:{name:'an old radio', loot:[['switch',1],['wire',3],['scrap',1]], extra:[['battery',1,.5],['transistor',2,.6],['buzzer',1,.35],['resistor',3,.9]]},
+  laptop:{name:'an old laptop', loot:[['battery',2],['led',1],['wire',2]], extra:[['motor',1,.7],['transistor',2,.7],['resistor',2,.7],['and',1,.25],['or',1,.25]]}
 };
+const LOAD_DRAIN = {16:.15, 17:.5, 18:.6, 19:.3, 21:.9, 23:.2, 24:.03};
 const SIMPLE_TIPS = [null, null,
   'Try a circuit: place a battery, then lay wire from it to an LED. In Simple electricity, anything touching a battery works.',
   'Put a switch in the wire to turn things on and off.'];
@@ -315,6 +362,8 @@ let cam = {x:0, y:8}, msg = {text:'', t:0}, info = {key:null, t:0};
 let spawnT = 4, saveT = 15, tipT = 2, regenT = 0, jumpBuf = 0;
 let trOn = new Uint8Array(W*H), live = new Uint8Array(W*H), sensHold = new Float32Array(W*H), sensors = [], magnets = [], buzzers = [], buzzT = 0, buzzFlip = false;
 const creative = () => G && G.mode==='creative';
+let batInfo = new Map(), mobSeq = 0;
+const charge = i => { const c = G.charge && G.charge[i]; return c===undefined ? 100 : c; };
 const mouse = {mx:0, my:0, l:false, r:false, lPress:false, lastPlace:-1, inside:false};
 const keys = {};
 
@@ -369,21 +418,21 @@ function genWorld(seed){
 }
 
 /* ---------- circuits ---------- */
-const COND = new Uint8Array(32); [13,16,17,18,19,21,23].forEach(i => COND[i]=1);
+const COND = new Uint8Array(32); [13,16,17,18,19,21,23,24].forEach(i => COND[i]=1);
 const stampA = new Int32Array(W*H), stampB = new Int32Array(W*H), deg = new Uint8Array(W*H), gone = new Uint8Array(W*H);
 let sA = 0, sB = 0;
 function conducts(i){ const t=G.tiles[i];
-  if (t===ID.switch) return G.meta[i]===1; if (t===ID.transistor) return trOn[i]===1; if (t===ID.sensor) return sensHold[i]>0;
+  if (t===ID.switch) return G.meta[i]===1; if (GATES.has(t)) return trOn[i]===1; if (t===ID.sensor) return sensHold[i]>0;
   return COND[t]===1; }
 const isLoad = i => !!TILES[G.tiles[i]].load;
 function nbrs(i){ const x=i%W, y=(i/W)|0, o=[]; if (x>0) o.push(i-1); if (x<W-1) o.push(i+1); if (y>0) o.push(i-W); if (y<H-1) o.push(i+W); return o; }
 // A transistor only passes current left-right; its top and bottom are the base, which doesn't join the path.
 function linkN(i){ const o=nbrs(i);
-  if (G.tiles[i]===ID.transistor) return o.filter(n => n===i-1 || n===i+1);
-  return o.filter(n => !((n===i-W || n===i+W) && G.tiles[n]===ID.transistor)); }
+  if (GATES.has(G.tiles[i])) return o.filter(n => n===i-1 || n===i+1);
+  return o.filter(n => !((n===i-W || n===i+W) && GATES.has(G.tiles[n]))); }
 
 function solveOnce(){
-  powered.fill(0); live.fill(0); batState = new Map();
+  powered.fill(0); live.fill(0); batState = new Map(); batInfo = new Map();
   for (let b=0;b<W*H;b++){
     if (G.tiles[b] !== ID.battery) continue;
     if (G.power==='simple'){
@@ -392,6 +441,7 @@ function solveOnce(){
       for (const i of comp){ powered[i]=1; live[i]=1; }
       batState.set(b, comp.length ? 'ok' : 'open'); continue;
     }
+    if (G.power==='advanced' && charge(b)<=0){ batState.set(b,'dead'); continue; }
     const x = b%W; if (x===0||x===W-1){ batState.set(b,'open'); continue; }
     const plus=b+1, minus=b-1;
     if (!conducts(plus)){ batState.set(b,'open'); continue; }
@@ -408,18 +458,21 @@ function solveOnce(){
     const q=[]; for (const i of comp) if (deg[i]<=1 && i!==plus && i!==minus) q.push(i);
     while (q.length){ const i=q.pop(); if (gone[i]) continue; gone[i]=1;
       for (const n of linkN(i)) if (stampA[n]===sA && !gone[n]){ deg[n]--; if (deg[n]<=1 && n!==plus && n!==minus) q.push(n); } }
-    for (const i of comp) if (!gone[i]) powered[i]=1;
+    let drain=0, hasRes=false; const leds=[];
+    for (const i of comp) if (!gone[i]){ powered[i]=1; const t=G.tiles[i]; drain += LOAD_DRAIN[t]||0; if (t===ID.resistor) hasRes=true; if (t===ID.led) leds.push(i); }
+    batInfo.set(b, {drain, hasRes, leds});
     batState.set(b,'ok');
   }
 }
 
 function recomputePower(){
   const old = batState;
-  const trs = []; for (let i=0;i<W*H;i++) if (G.tiles[i]===ID.transistor) trs.push(i);
+  const trs = []; for (let i=0;i<W*H;i++) if (GATES.has(G.tiles[i])) trs.push(i);
   trOn.fill(0);
   for (let pass=0; pass<8; pass++){
     solveOnce(); let changed=false;
-    for (const i of trs){ const y=(i/W)|0; const on = ((y>0 && live[i-W]) || (y<H-1 && live[i+W])) ? 1 : 0;
+    for (const i of trs){ const y=(i/W)|0, t=G.tiles[i], a=!!(y>0 && live[i-W]), b=!!(y<H-1 && live[i+W]);
+      const on = (t===ID.and ? (a&&b) : t===ID.not ? !(a||b) : (a||b)) ? 1 : 0;
       if (on!==trOn[i]){ trOn[i]=on; changed=true; } }
     if (!changed) break;
   }
@@ -434,8 +487,7 @@ function recomputePower(){
       j=i+W; while (j<W*H && G.tiles[j]===ID.door){ doorOpen[j]=1; j+=W; } }
     if (powered[i] && (t===ID.led||t===ID.lamp)) lights.push({x:i%W+.5, y:((i/W)|0)+.5, r:t===ID.lamp?8:3.5, c:t===ID.lamp?'255,226,150':'255,80,180', lamp:t===ID.lamp});
   }
-  const p = G.player;
-  if (p) for (let y=Math.floor(p.y); y<=Math.floor(p.y+p.h); y++) for (let x=Math.floor(p.x); x<=Math.floor(p.x+p.w); x++)
+  for (const p of allPlayers()) for (let y=Math.floor(p.y); y<=Math.floor(p.y+p.h); y++) for (let x=Math.floor(p.x); x<=Math.floor(p.x+p.w); x++)
     if (x>=0&&x<W&&y>=0&&y<H && G.tiles[idx(x,y)]===ID.door) doorOpen[idx(x,y)]=1;
   if (G.power!=='simple') for (const [b,s] of batState) if (s==='short' && old.get(b)!=='short'){
     say("Short circuit! The wire runs straight from + to − with nothing in between. Nothing works, and a real one gets hot fast. Put a part in the loop.", 8);
@@ -475,13 +527,32 @@ function breakTile(tx,ty){
     say(`You took apart ${S.name}: ${got.join(', ')}.`, 5); tone(660,.08,'triangle'); setTimeout(()=>tone(880,.1,'triangle'),90);
     burst(tx+.5,ty+.5,'#3ff0ff',14); }
   else if (def.drop){ give(def.drop,1,tx+.5,ty); burst(tx+.5,ty+.5, t===ID.copper?'#e07b39':'#8a7f9a', 8); tone(220,.05,'square',.025); }
-  G.tiles[i]=0; G.meta[i]=0; updSurf(tx); recomputePower();
+  setCell(i,0,0); netLocal('break', i);
+}
+// one place every tile change goes through, so multiplayer can copy it
+function setCell(i,t,m){
+  G.tiles[i]=t; G.meta[i]=m;
+  if (t===ID.battery){ if (G.charge) G.charge[i]=100; } else if (G.charge) delete G.charge[i];
+  if (t===ID.sensor) sensHold[i]=0;
+  updSurf(i%W); recomputePower();
+}
+function crankAt(i, remote){
+  if (NET.role==='guest' && !remote){ netSend({t:'crank', i}); }
+  G.crankT = G.crankT || {}; G.crankT[i]=now;
+  if (!remote){ tone(300+Math.random()*80,.05,'sawtooth',.025); }
+  if (G.power!=='advanced'){ if (!remote) say('Batteries never run down in this mode. Pick Advanced electricity for a new world to need the crank.', 4); return; }
+  if (NET.role==='guest') return;
+  let any=false;
+  for (const n of nbrs(i)) if (G.tiles[n]===ID.battery){ any=true; const was=charge(n); G.charge[n]=Math.min(100, was+4);
+    burst(n%W+.5, ((n/W)|0)+.5, '#46ff8f', 3, 2); if (was<=0) recomputePower(); }
+  if (!any && !remote) say('Put a battery right next to the crank to charge it.', 3);
 }
 function tryPlace(tx,ty, allowToggle){
   if (tx<0||tx>=W||ty<0||ty>=H) return;
   const p=G.player, i=idx(tx,ty), t=G.tiles[i];
   if (Math.hypot(tx+.5-(p.x+p.w/2), ty+.5-(p.y+p.h*.35)) > 5.5) return;
-  if (t===ID.switch && allowToggle){ G.meta[i]=G.meta[i]?0:1; recomputePower(); tone(G.meta[i]?780:340,.06); return; }
+  if (t===ID.switch && allowToggle){ setCell(i, t, G.meta[i]?0:1); netLocal('toggle', i); tone(G.meta[i]?780:340,.06); return; }
+  if (t===ID.crank && allowToggle){ crankAt(i); return; }
   if (t!==0) return;
   const k=G.slots[G.sel], it=ITEMS[k];
   if (!it) return;
@@ -489,9 +560,8 @@ function tryPlace(tx,ty, allowToggle){
   if (!creative() && !(G.inv[k]>0)){ say(`You're out of ${it.name}. Scavenge or craft more.`, 3); return; }
   const solid = TILES[it.tile].solid || it.tile===ID.door;
   if (solid && (boxHit(p, tileBox(tx,ty)) || mobs.some(m => boxHit(m, tileBox(tx,ty))))) return;
-  G.tiles[i]=it.tile; G.meta[i] = it.tile===ID.switch ? 1 : 0; if (!creative()) G.inv[k]--;
-  if (it.tile===ID.sensor) sensHold[i]=0;
-  updSurf(tx); recomputePower(); tone(520,.04,'square',.025);
+  if (!creative()) G.inv[k]--;
+  setCell(i, it.tile, it.tile===ID.switch ? 1 : 0); netLocal('place', i); tone(520,.04,'square',.025);
 }
 function hurtPlayer(dir){
   if (creative()) return;
@@ -500,25 +570,199 @@ function hurtPlayer(dir){
   if (p.hp<=0){ say('Zapped out! Rebooting at the start. You kept all your stuff.', 5);
     p.hp=5; p.x=G.spawn.x; p.y=spawnY(Math.floor(G.spawn.x)); p.vx=p.vy=0; p.hurt=2; mobs=[]; }
 }
-function attack(m){
-  const p=G.player, dir=Math.sign(m.x-p.x)||1;
-  m.hp--; m.hurt=.35; m.vx=dir*7; m.vy=-5; p.swing=.22;
-  burst(m.x+m.w/2,m.y+m.h/2,'#ffe14a',8); tone(240,.06,'square',.04);
-  if (m.hp<=0){ burst(m.x+m.w/2,m.y+m.h/2,'#cfc8ff',22,6); tone(520,.08,'triangle'); setTimeout(()=>tone(320,.12,'triangle'),70);
-    give('scrap', 1+Math.floor(Math.random()*2), m.x+m.w/2, m.y);
-    if (Math.random()<.35) give('wire',2,m.x+m.w/2,m.y-.6); }
+function attack(m, by){
+  const local = !by;
+  if (local){ G.player.swing=.22; burst(m.x+m.w/2,m.y+m.h/2,'#ffe14a',8); tone(240,.06,'square',.04); }
+  if (NET.role==='guest'){ netSend({t:'hit', id:m.id}); return; }
+  const who = local ? G.player : (NET.rp.get(by) || G.player), dir=Math.sign(m.x-who.x)||1;
+  m.hp--; m.hurt=.35; m.vx=dir*7; m.vy=-5;
+  if (m.hp<=0){
+    if (local){ burst(m.x+m.w/2,m.y+m.h/2,'#cfc8ff',22,6); tone(520,.08,'triangle'); setTimeout(()=>tone(320,.12,'triangle'),70); }
+    const loot=[['scrap',1+Math.floor(Math.random()*2)]]; if (Math.random()<.35) loot.push(['wire',2]);
+    if (local) loot.forEach(([k,n],j) => give(k,n,m.x+m.w/2,m.y-j*.6));
+    else { const c=NET.conns.get(by); if (c && c.open) c.send({t:'loot', items:loot}); } }
 }
 function mobAt(wx, wy){
   const p=G.player, pcx=p.x+p.w/2, pcy=p.y+p.h*.35;
   return mobs.find(m => wx>m.x-.25 && wx<m.x+m.w+.25 && wy>m.y-.25 && wy<m.y+m.h+.25 && Math.hypot(m.x+m.w/2-pcx, m.y+m.h/2-pcy)<4.5);
 }
 function spawnMob(){
-  const p=G.player, side=Math.random()<.5?-1:1, x=Math.floor(p.x+side*(26+Math.random()*12));
+  const all=allPlayers(), p=all[Math.floor(Math.random()*all.length)], side=Math.random()<.5?-1:1, x=Math.floor(p.x+side*(26+Math.random()*12));
   if (x<2||x>W-3) return;
   if (lights.some(l => l.lamp && Math.abs(l.x-x)<12 && Math.abs(l.y-surfTop[x])<12)) return;
   const drone = Math.random()<.3, y = surfTop[x] - (drone?6:1.5);
-  mobs.push(drone ? {type:'drone', x, y, w:.9, h:.6, vx:0, vy:0, hp:2, hurt:0, t:Math.random()*9}
-                  : {type:'bot', x, y, w:.8, h:1.3, vx:0, vy:0, hp:3, hurt:0, dir:-side, t:0});
+  mobs.push(drone ? {id:++mobSeq, type:'drone', x, y, w:.9, h:.6, vx:0, vy:0, hp:2, hurt:0, t:Math.random()*9}
+                  : {id:++mobSeq, type:'bot', x, y, w:.8, h:1.3, vx:0, vy:0, hp:3, hurt:0, dir:-side, t:0});
+}
+
+/* ---------- multiplayer ----------
+   The host's game owns the world and the bots. Guests move their own scavenger,
+   send their digging and building to the host, and get every change back. */
+const NET = {role:null, peer:null, conn:null, conns:new Map(), rp:new Map(), code:null, sendT:0, invT:5, bcT:0, loading:null};
+const NET_V = 2, PEER_PREFIX = 'scrapcircuit-v1-', CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const COLORS = ['#1fa39a','#ff8a3f','#8f6bff','#ffd23f'];
+const cleanName = n => String(n||'').replace(/[^\w \-']/g,'').trim().slice(0,14) || 'Friend';
+function cleanInv(inv){ const o={}; if (inv && typeof inv==='object') for (const k of ITEM_ORDER) if (inv[k]>0) o[k]=Math.min(9999, Math.floor(inv[k])); return o; }
+function allPlayers(){ return G ? [G.player, ...NET.rp.values()] : []; }
+function me(){ let m=null; try { m=JSON.parse(store.get(KEY+'me')||'null'); } catch(e){}
+  if (!m || !m.id){ m={id:newId(), name:''}; store.set(KEY+'me', JSON.stringify(m)); } return m; }
+function setMyName(n){ const m=me(); m.name=cleanName(n); store.set(KEY+'me', JSON.stringify(m)); return m.name; }
+function netSend(msg){ if (NET.conn && NET.conn.open) try { NET.conn.send(msg); } catch(e){} }
+function broadcast(msg){ for (const c of NET.conns.values()) if (c.open) try { c.send(msg); } catch(e){} }
+function netLocal(op, i){
+  if (NET.role==='host') broadcast({t:'set', c:[[i, G.tiles[i], G.meta[i]]]});
+  else if (NET.role==='guest') netSend({t:'edit', op, i, tile:G.tiles[i]});
+}
+function loadPeerLib(){
+  if (window.Peer) return Promise.resolve();
+  if (NET.loading) return NET.loading;
+  const urls=['https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js','https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'];
+  NET.loading = new Promise((res, rej) => { let k=0;
+    const next = () => { if (k>=urls.length){ NET.loading=null; rej(Error('lib')); return; }
+      const s=document.createElement('script'); s.src=urls[k++]; s.onload=() => window.Peer ? res() : next(); s.onerror=next; document.head.appendChild(s); };
+    next(); });
+  return NET.loading;
+}
+function worldPayload(){ const on=[]; for (let i=0;i<W*H;i++) if (G.meta[i]) on.push(i);
+  return {name:G.name, seed:G.seed, mode:G.mode, power:G.power, tiles:rle(G.tiles), on, spawn:G.spawn, ch:G.charge||{}}; }
+
+async function hostStart(){
+  if (NET.role || !G) return;
+  setMyName($('hostName').value || me().name || 'Host');
+  inviteStatus('Starting…');
+  try { await loadPeerLib(); } catch(e){ inviteStatus("Couldn't load the multiplayer helper. Check your internet connection and try again."); return; }
+  const open = attempt => {
+    const code = Array.from({length:4}, () => CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
+    let peer; try { peer = new Peer(PEER_PREFIX+code); } catch(e){ inviteStatus("Couldn't start sharing."); return; }
+    peer.on('open', () => { if (!G){ peer.destroy(); return; } NET.role='host'; NET.peer=peer; NET.code=code; renderInvite(); say(`Friends can join with code ${code}.`, 6); });
+    peer.on('connection', conn => hostConn(conn));
+    peer.on('disconnected', () => { try { peer.reconnect(); } catch(e){} });
+    peer.on('error', err => {
+      if (!NET.role){ peer.destroy(); if (err && err.type==='unavailable-id' && attempt<4) open(attempt+1); else inviteStatus("Couldn't start sharing. Check your internet and try again."); }
+    });
+  };
+  open(0);
+}
+function hostConn(conn){
+  conn.on('data', d => hostData(conn, d));
+  conn.on('close', () => { const id=conn.pid; if (id && NET.conns.get(id)===conn){ NET.conns.delete(id); const r=NET.rp.get(id); NET.rp.delete(id); if (r) say(`${r.name} left.`, 3); renderInvite(); } });
+  conn.on('error', () => {});
+}
+function hostData(conn, d){
+  if (!d || typeof d!=='object' || !G || NET.role!=='host') return;
+  if (d.t==='hello'){
+    if (d.v!==NET_V){ conn.send({t:'oldver'}); return; }
+    if (NET.conns.size>=3){ conn.send({t:'full'}); return; }
+    const id=String(d.id||newId()).slice(0,40), name=cleanName(d.name);
+    const old=NET.conns.get(id); if (old && old!==conn) try { old.close(); } catch(e){}
+    conn.pid=id; NET.conns.set(id, conn);
+    const saved=(G.guests||{})[id], used=new Set([...NET.rp.values()].map(r=>r.c));
+    const c=COLORS.slice(1).find(x=>!used.has(x)) || COLORS[1];
+    const sx = saved ? saved.x : G.player.x+1, sy = saved ? saved.y : G.player.y;
+    NET.rp.set(id, {id, name, c, x:sx, y:sy, tx:sx, ty:sy, w:.7, h:1.7, vx:0, vy:0, f:1, s:0});
+    conn.send({t:'welcome', world:worldPayload(), you:{x:sx, y:sy, c, inv:saved ? saved.inv : null}});
+    say(`${name} joined!`, 4); tone(660,.1,'triangle'); setTimeout(()=>tone(990,.12,'triangle'),100); renderInvite(); return;
+  }
+  const id=conn.pid, r=id && NET.rp.get(id); if (!r) return;
+  if (d.t==='me'){ r.tx=+d.x||r.tx; r.ty=+d.y||r.ty; r.vx=+d.vx||0; r.vy=+d.vy||0; r.f=d.f<0?-1:1; r.s=d.s?1:0; }
+  else if (d.t==='edit'){
+    const i=d.i|0; if (i<0 || i>=W*H) return; const t=G.tiles[i];
+    if (d.op==='break' && t && TILES[t].hard!==Infinity) { setCell(i,0,0); netLocal('set', i); }
+    else if (d.op==='place' && t===0 && ITEM_ORDER.some(k => ITEMS[k].tile===d.tile)){ setCell(i, d.tile, d.tile===ID.switch?1:0); netLocal('set', i); }
+    else if (d.op==='toggle' && t===ID.switch){ setCell(i, t, G.meta[i]?0:1); netLocal('set', i); }
+    else conn.send({t:'set', c:[[i, t, G.meta[i]]]});
+  }
+  else if (d.t==='hit'){ const m=mobs.find(m => m.id===d.id); if (m && Math.hypot(m.x-r.x, m.y-r.y)<6) attack(m, id); }
+  else if (d.t==='crank'){ const i=d.i|0; if (i>=0 && i<W*H && G.tiles[i]===ID.crank) crankAt(i, true); }
+  else if (d.t==='inv'){ G.guests=G.guests||{}; G.guests[id]={inv:cleanInv(d.inv), x:r.x, y:r.y, name:r.name}; }
+}
+
+async function joinGame(rawCode, name){
+  const code=String(rawCode).toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if (code.length!==4) return joinMsg('Invite codes are 4 letters and numbers.');
+  if (NET.role) return;
+  joinMsg('Connecting…'); $('joinBtn').textContent='Connecting…';
+  const reset = t => { joinMsg(t); $('joinBtn').textContent='Join'; };
+  try { await loadPeerLib(); } catch(e){ return reset("Couldn't load the multiplayer helper. Check your internet connection."); }
+  const m=me(); m.name=setMyName(name);
+  let done=false, peer;
+  try { peer = new Peer(); } catch(e){ return reset("Couldn't connect."); }
+  NET.peer = peer;
+  const fail = t => { if (done) return; done=true; clearTimeout(timer); try { peer.destroy(); } catch(e){} NET.peer=null; NET.conn=null; reset(t); };
+  const timer = setTimeout(() => fail("Couldn't reach that game. Check the code, make sure the host's game is open with Invite friends on, and try again. Being on the same Wi-Fi helps."), 15000);
+  peer.on('error', err => {
+    if (!done){ fail(err && err.type==='peer-unavailable' ? 'No game with that code right now. Check the code, and make sure the host has Invite friends turned on.' : "Couldn't connect. Check your internet and try again."); }
+  });
+  peer.on('open', () => {
+    const conn = peer.connect(PEER_PREFIX+code, {reliable:true}); NET.conn = conn;
+    conn.on('open', () => conn.send({t:'hello', v:NET_V, id:m.id, name:m.name}));
+    conn.on('data', d => {
+      if (!d || typeof d!=='object') return;
+      if (d.t==='welcome' && !done){ done=true; clearTimeout(timer); $('joinBtn').textContent='Join'; joinMsg(''); guestStart(d); }
+      else if (d.t==='full') fail('That game is full. Four players is the most.');
+      else if (d.t==='oldver') fail("Your game and your friend's game are different versions. Both of you reload the page, then try again.");
+      else guestData(d);
+    });
+    conn.on('close', () => { if (NET.role==='guest') lostHost(); else fail('The host closed the connection.'); });
+  });
+}
+function guestStart(d){
+  const w=d.world, tiles=unrle(w.tiles, W*H), meta=new Uint8Array(W*H); (w.on||[]).forEach(i => meta[i]=1);
+  NET.role='guest';
+  startWorld({id:'guest', guest:true, name:String(w.name||'Friend world').slice(0,24), seed:w.seed|0, mode:w.mode==='creative'?'creative':'survival',
+    power:['simple','advanced'].includes(w.power)?w.power:'real', tiles, meta, charge:w.ch||{},
+    player:mkPlayer(+d.you.x||10, +d.you.y||10, 5), spawn:w.spawn||{x:10,y:10},
+    inv: d.you.inv ? cleanInv(d.you.inv) : {wire:14, battery:1, switch:1, led:2, resistor:2, plate:4},
+    slots:DEFAULT_SLOTS.slice(), sel:0, tipsDone:TIPS.length, age:999, created:Date.now()});
+  G.player.c = d.you.c; say(`You joined ${G.name}!`, 4); tone(660,.1,'triangle'); setTimeout(()=>tone(990,.12,'triangle'),100);
+}
+function guestData(d){
+  if (!G || NET.role!=='guest') return;
+  if (d.t==='set'){ for (const [i,t,m] of d.c){ if (i<0||i>=W*H) continue; G.tiles[i]=t; G.meta[i]=m; if (t!==ID.battery && G.charge) delete G.charge[i]; updSurf(i%W); } recomputePower(); }
+  else if (d.t==='st'){
+    const seen=new Set();
+    for (const q of d.pl||[]){ if (q.id===me().id) continue; seen.add(q.id);
+      let r=NET.rp.get(q.id); if (!r){ r={id:q.id, w:.7, h:1.7, x:q.x, y:q.y}; NET.rp.set(q.id, r); }
+      Object.assign(r, {name:cleanName(q.name), c:q.c, tx:q.x, ty:q.y, vx:q.vx, vy:q.vy, f:q.f, s:q.s}); }
+    for (const id of [...NET.rp.keys()]) if (!seen.has(id)) NET.rp.delete(id);
+    const byId=new Map(mobs.map(m=>[m.id,m]));
+    mobs = (d.mb||[]).map(q => { const m=byId.get(q.id) || {id:q.id, type:q.ty, x:q.x, y:q.y, t:0, w:q.ty==='drone'?.9:.8, h:q.ty==='drone'?.6:1.3};
+      m.tx=q.x; m.ty=q.y; m.vx=q.vx; m.vy=q.vy; m.hurt=q.hu?.2:0; m.held=!!q.he; return m; });
+    let ch=false; const on=new Set(d.sn||[]);
+    for (const i of sensors){ const v=on.has(i)?1:0; if ((sensHold[i]>0)!==!!v){ sensHold[i]=v; ch=true; } }
+    if (d.bc){ const deadBefore=[...batState].filter(([,s])=>s==='dead').length; G.charge=d.bc;
+      if (G.power==='advanced'){ let deadNow=0; for (const [b] of batState) if (charge(b)<=0) deadNow++; if (deadNow!==deadBefore) ch=true; } }
+    if (ch) recomputePower();
+  }
+  else if (d.t==='loot'){ (d.items||[]).forEach(([k,n],j) => { if (ITEMS[k]) give(k, n|0, G.player.x+.35, G.player.y-j*.6); }); }
+  else if (d.t==='bye') lostHost('The host stopped the game.');
+}
+function lostHost(text){
+  if (NET.role!=='guest') return;
+  netStop(); G=null; document.documentElement.classList.remove('creative'); showOv('menu'); renderMenu(text || 'Lost the connection to the host.');
+}
+function netStop(){
+  if (NET.role==='host') broadcast({t:'bye'});
+  const peer=NET.peer; setTimeout(() => { try { peer && peer.destroy(); } catch(e){} }, 200);
+  NET.role=null; NET.peer=null; NET.conn=null; NET.conns.clear(); NET.rp.clear(); NET.code=null; renderInvite();
+}
+function netTick(dt){
+  for (const r of NET.rp.values()) if (r.tx!==undefined){ r.x+=(r.tx-r.x)*Math.min(1,dt*12); r.y+=(r.ty-r.y)*Math.min(1,dt*12); r.t=(r.t||0)+dt; }
+  if (!NET.role) return;
+  NET.sendT-=dt; if (NET.sendT>0) return; NET.sendT=1/12;
+  const p=G.player;
+  if (NET.role==='guest'){
+    netSend({t:'me', x:+p.x.toFixed(3), y:+p.y.toFixed(3), vx:+p.vx.toFixed(2), vy:+p.vy.toFixed(2), f:p.facing, s:p.swing>0?1:0});
+    NET.invT-=1/12; if (NET.invT<=0){ NET.invT=5; netSend({t:'inv', inv:G.inv}); }
+    return;
+  }
+  if (!NET.conns.size) return;
+  const pl=[{id:'host', name:me().name||'Host', c:COLORS[0], x:p.x, y:p.y, vx:p.vx, vy:p.vy, f:p.facing, s:p.swing>0?1:0}];
+  for (const r of NET.rp.values()) pl.push({id:r.id, name:r.name, c:r.c, x:r.x, y:r.y, vx:r.vx, vy:r.vy, f:r.f, s:r.s});
+  const msg={t:'st', pl, mb:mobs.map(m => ({id:m.id, ty:m.type, x:+m.x.toFixed(2), y:+m.y.toFixed(2), vx:+m.vx.toFixed(1), vy:+m.vy.toFixed(1), hu:m.hurt>0?1:0, he:m.held?1:0})),
+    sn:sensors.filter(i => sensHold[i]>0)};
+  NET.bcT-=1/12; if (G.power==='advanced' && NET.bcT<=0){ NET.bcT=1; msg.bc=G.charge; }
+  broadcast(msg);
 }
 
 /* ---------- update ---------- */
@@ -564,22 +808,47 @@ function update(dt){
   }
   mouse.lPress=false;
   // motion sensors: close for 1.5 s after something moves within 4.5 tiles
-  let sensChanged=false;
-  for (const i of sensors){ const was=sensHold[i]>0, sx=i%W+.5, sy=((i/W)|0)+.5;
-    let seen = Math.hypot(pcx-sx, p.y+p.h/2-sy)<4.5 && Math.hypot(p.vx,p.vy)>.3;
-    if (!seen) for (const m of mobs) if (!m.held && Math.hypot(m.x+m.w/2-sx, m.y+m.h/2-sy)<4.5 && Math.hypot(m.vx,m.vy)>.3){ seen=true; break; }
-    sensHold[i] = seen ? 1.5 : Math.max(0, sensHold[i]-dt);
-    if ((sensHold[i]>0)!==was) sensChanged=true; }
-  if (sensChanged) recomputePower();
+  const guest = NET.role==='guest';
+  if (!guest){
+    let sensChanged=false; const movers=[...allPlayers(), ...mobs.filter(m=>!m.held)];
+    for (const i of sensors){ const was=sensHold[i]>0, sx=i%W+.5, sy=((i/W)|0)+.5;
+      const seen = movers.some(e => Math.hypot(e.x+e.w/2-sx, e.y+e.h/2-sy)<4.5 && Math.hypot(e.vx||0,e.vy||0)>.3);
+      sensHold[i] = seen ? 1.5 : Math.max(0, sensHold[i]-dt);
+      if ((sensHold[i]>0)!==was) sensChanged=true; }
+    if (sensChanged) recomputePower();
+  }
+  // advanced electricity: batteries drain, LEDs without a resistor burn out
+  if (G.power==='advanced' && !guest && !cre){
+    let rec=false;
+    for (const [b,s] of batState){
+      let drain = 0; const info = batInfo.get(b);
+      if (s==='short') drain = 8; else if (info) drain = info.drain;
+      if (drain>0){ const before=charge(b); G.charge[b]=Math.max(0, before-drain*dt);
+        if (before>0 && G.charge[b]<=0){ rec=true; say('A battery ran flat! Charge it with a crank generator, or swap in a new one.', 6); tone(160,.3,'triangle'); } }
+      if (info && info.leds.length && !info.hasRes){
+        G.ledT=G.ledT||{}; G.ledT[b]=(G.ledT[b]||0)+dt;
+        if (G.ledT[b]>1.2){ G.ledT[b]=0;
+          for (const i of info.leds){ burst(i%W+.5, ((i/W)|0)+.4, '#c9c6e0', 10, 2); setCell(i, ID.burnt, 0); netLocal('set', i); }
+          say('Pop! The LED burned out. Too much current went through it. Put a resistor in the loop to slow the current down.', 8); tone(140,.2,'square',.04); }
+      } else if (G.ledT) G.ledT[b]=0;
+    }
+    if (rec) recomputePower();
+  }
   // buzzers
   buzzT-=dt;
   if (buzzT<=0 && buzzers.some(i => Math.hypot(i%W+.5-pcx, ((i/W)|0)+.5-pcy)<22)){ buzzT=.42; buzzFlip=!buzzFlip; tone(buzzFlip?1180:880,.14,'square',.02); }
   // mobs
-  if (!cre && G.age>25){ spawnT-=dt; if (spawnT<=0){ spawnT=5+Math.random()*4; if (mobs.length<5) spawnMob(); } }
+  if (!guest && !cre && G.age>25){ spawnT-=dt; if (spawnT<=0){ spawnT=5+Math.random()*4; if (mobs.length < 5+NET.rp.size*2) spawnMob(); } }
   if (cre) mobs=[];
-  for (const m of mobs){
+  if (guest){ // the host runs the bots; we just glide them toward where the host says they are
+    for (const m of mobs){ m.t+=dt; m.x+=(m.tx-m.x)*Math.min(1,dt*12); m.y+=(m.ty-m.y)*Math.min(1,dt*12);
+      if (!m.held && boxHit(m,p) && p.hurt<=0){ hurtPlayer(Math.sign((p.x+p.w/2)-(m.x+m.w/2))||1); } }
+  }
+  const everyone = allPlayers();
+  for (const m of (guest ? [] : mobs)){
     m.t+=dt; if (m.hurt>0) m.hurt-=dt;
-    const dx=(p.x+p.w/2)-(m.x+m.w/2), dy=(p.y+p.h/2)-(m.y+m.h/2), d=Math.hypot(dx,dy);
+    let tp=p, best=1e9; for (const q of everyone){ const dd=Math.hypot(q.x-m.x, q.y-m.y); if (dd<best){ best=dd; tp=q; } }
+    const dx=(tp.x+tp.w/2)-(m.x+m.w/2), dy=(tp.y+tp.h/2)-(m.y+m.h/2), d=Math.hypot(dx,dy);
     // electromagnets pull bots in and hold them
     m.held=false; let mag=null, md=6;
     for (const i of magnets){ const d2=Math.hypot(i%W+.5-(m.x+m.w/2), ((i/W)|0)+.5-(m.y+m.h/2)); if (d2<md){ md=d2; mag=i; } }
@@ -598,9 +867,10 @@ function update(dt){
       else { m.vy *= .95; }
       move(m,dt);
     }
-    if (boxHit(m,p) && p.hurt<=0){ const dir=Math.sign(dx)||1; hurtPlayer(dir); m.vx=-dir*4; }
+    if (boxHit(m,p) && p.hurt<=0){ const dir=Math.sign((p.x+p.w/2)-(m.x+m.w/2))||1; hurtPlayer(dir); m.vx=-dir*4; }
   }
-  mobs = mobs.filter(m => m.hp>0 && Math.abs(m.x-p.x)<70 && m.y<H);
+  if (!guest) mobs = mobs.filter(m => m.hp>0 && m.y<H && everyone.some(q => Math.abs(m.x-q.x)<70));
+  netTick(dt);
   // fx
   for (const q of parts){ q.t-=dt; q.vy+=14*dt; q.x+=q.vx*dt; q.y+=q.vy*dt; }
   parts = parts.filter(q => q.t>0);
@@ -609,6 +879,7 @@ function update(dt){
   for (const [b,s] of batState) if (s==='short' && Math.random()<dt*10) burst(b%W+.5, ((b/W)|0)+.3, '#ffe14a', 2, 3);
   if (msg.t>0) msg.t-=dt; if (info.t>0) info.t-=dt;
   saveT-=dt; if (saveT<=0){ saveWorld(); saveT=20; }
+  if (G.crankT) for (const k in G.crankT) if (now-G.crankT[k]>.6) delete G.crankT[k];
   // camera
   const vwT=VW/T, vhT=VH/T;
   const cxT = clamp(p.x+p.w/2-vwT/2, 0, W-vwT), cyT = clamp(p.y+p.h/2-vhT/2, 0, H-vhT);
@@ -666,12 +937,13 @@ function connsOf(i){
   const x=i%W, y=(i/W)|0, c=[0,0,0,0];
   const chk=(nx,ny,d)=>{ if (nx<0||nx>=W||ny<0||ny>=H) return; const t=G.tiles[idx(nx,ny)]; if (t===ID.battery){ if (d<2) c[d]=1; return; } if (TILES[t].comp) c[d]=1; };
   chk(x-1,y,0); chk(x+1,y,1); chk(x,y-1,2); chk(x,y+1,3);
-  if (G.tiles[i]===ID.transistor){ c[2]=0; c[3]=0; }
+  if (GATES.has(G.tiles[i])){ c[2]=0; c[3]=0; }
+  if (G.tiles[i]===ID.burnt || G.tiles[i]===ID.crank) c.fill(0);
   return c;
 }
 function rect(x,y,w,h){ ctx.fillRect(x,y,w,h); }
 function circ(x,y,r){ ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill(); }
-function drawComp(t, px, py, sc, cn, pw, st){
+function drawComp(t, px, py, sc, cn, pw, st, ch01){
   ctx.save(); ctx.translate(px,py); ctx.scale(sc,sc);
   const wc = pw ? '#3ff0ff' : '#c87533';
   if (cn && t!==ID.battery){ ctx.strokeStyle=wc; ctx.lineWidth=4; ctx.beginPath();
@@ -679,10 +951,11 @@ function drawComp(t, px, py, sc, cn, pw, st){
     if (cn[2]){ctx.moveTo(12,12);ctx.lineTo(12,0);} if (cn[3]){ctx.moveTo(12,12);ctx.lineTo(12,24);} ctx.stroke(); }
   if (t===ID.wire){ ctx.fillStyle=wc; rect(9,9,6,6); if (!cn || !cn.some(Boolean)){ rect(3,10,18,4); } }
   else if (t===ID.battery){
-    const flash = st==='short' && (now%.3<.15);
+    const flash = st==='short' && (now%.3<.15), ch = ch01===undefined ? 1 : ch01;
     if (cn){ ctx.fillStyle='#c87533'; if (cn[0]) rect(0,10,3,4); if (cn[1]) rect(21,10,3,4); }
     ctx.fillStyle = flash ? '#ff4040' : '#17603a'; rect(2,6,19,12);
-    ctx.fillStyle = flash ? '#ffb0b0' : (st==='ok' ? '#46ff8f' : '#2bb562'); rect(3,7,9,10);
+    ctx.fillStyle='#0c2a1a'; rect(3,7,9,10);
+    ctx.fillStyle = flash ? '#ffb0b0' : ch<.25 ? '#ff5a4a' : (st==='ok' ? '#46ff8f' : '#2bb562'); rect(3,7,Math.max(0,9*ch),10);
     ctx.fillStyle='#d7d7e0'; rect(21,9,2,6);
     ctx.fillStyle='#fff'; ctx.font='bold 10px sans-serif'; ctx.textAlign='center'; ctx.fillText('+',17,16); ctx.fillText('−',7,16); }
   else if (t===ID.switch){
@@ -709,6 +982,24 @@ function drawComp(t, px, py, sc, cn, pw, st){
     else { ctx.fillStyle='#5d6b7a'; rect(0,0,24,24); ctx.fillStyle='#4a5562'; rect(0,5,24,1); rect(0,18,24,1);
       for (let k=0;k<6;k++){ ctx.fillStyle = k%2 ? '#1a1a1a' : '#ffcc33'; rect(k*4,10,4,4); }
       ctx.fillStyle = pw ? '#46ff8f' : '#ff4d6d'; rect(11,1,2,2); } }
+  else if (t===ID.resistor){
+    ctx.fillStyle='#d9c49a'; rect(5,8,14,8); ctx.fillStyle='#c4ad80'; rect(5,8,14,2);
+    ctx.fillStyle='#7a4a2a'; rect(8,8,2,8); ctx.fillStyle='#111'; rect(11,8,2,8); ctx.fillStyle='#d23a2a'; rect(14,8,2,8); }
+  else if (t===ID.burnt){
+    ctx.fillStyle='#6a6a7a'; rect(9,14,2,6); rect(13,14,2,6);
+    ctx.fillStyle='#2a2226'; ctx.beginPath(); ctx.arc(12,10,5,Math.PI,0); ctx.lineTo(17,15); ctx.lineTo(7,15); ctx.fill();
+    ctx.fillStyle='rgba(180,175,200,.35)'; const s=(now*6)%8; circ(12+Math.sin(now*3)*2, 4-s*.4, 2+s*.2); }
+  else if (t===ID.and || t===ID.or || t===ID.not){
+    ctx.fillStyle = st ? '#46ff8f' : '#8a7f9a'; rect(11,0,2,5); if (t!==ID.not || true) rect(11,19,2,5);
+    ctx.fillStyle='#1d1d26'; rect(3,5,18,14); ctx.fillStyle='#3a3a48'; rect(3,5,18,2);
+    ctx.fillStyle='#c9c6e0'; ctx.font='bold 7px sans-serif'; ctx.textAlign='center'; ctx.fillText(t===ID.and?'AND':t===ID.or?'OR':'NOT', 12, 15);
+    ctx.fillStyle = st ? '#46ff8f' : '#4a4a5e'; rect(17,8,2,2); }
+  else if (t===ID.crank){
+    ctx.fillStyle='#5d6b7a'; rect(3,10,18,12); ctx.fillStyle='#4a5562'; rect(3,10,18,2);
+    ctx.fillStyle='#ffcc33'; rect(5,15,3,3); rect(16,15,3,3);
+    ctx.save(); ctx.translate(12,8); ctx.rotate(st ? now*18 : .5);
+    ctx.fillStyle='#b9bdd0'; circ(0,0,4); ctx.fillStyle='#8892a6'; rect(0,-1,7,2); ctx.fillStyle='#ff3fa4'; rect(6,-2,2,4);
+    ctx.restore(); }
   else if (t===ID.transistor){
     ctx.fillStyle = st ? '#46ff8f' : '#8a7f9a'; rect(11,0,2,4); rect(11,20,2,4);
     ctx.fillStyle='#9a9aae'; rect(8,15,2,5); rect(14,15,2,5);
@@ -741,17 +1032,21 @@ function drawIcon(k, cx, cy, size){
     else { ctx.fillStyle='#7d8590'; ctx.beginPath(); ctx.moveTo(4,18); ctx.lineTo(8,6); ctx.lineTo(14,10); ctx.lineTo(20,4); ctx.lineTo(21,19); ctx.closePath(); ctx.fill(); ctx.fillStyle='#a9b3bd'; rect(9,9,4,3); ctx.fillStyle='#7d4a3a'; rect(15,13,3,3); }
     ctx.restore(); }
 }
-function drawPlayer(){
-  const p=G.player; if (p.hurt>0 && Math.floor(p.hurt*14)%2) return;
-  const w=p.w*T, h=p.h*T, px=(p.x-cam.x)*T, py=(p.y-cam.y)*T;
-  ctx.save(); ctx.translate(px+w/2, py); ctx.scale(p.facing,1);
-  const walk = Math.abs(p.vx)>.5 && p.onGround ? Math.sin(now*14)*3 : 0;
+function drawPlayer(p, remote){
+  p = p || G.player; if (!remote && p.hurt>0 && Math.floor(p.hurt*14)%2) return;
+  const w=.7*T, h=1.7*T, px=(p.x-cam.x)*T, py=(p.y-cam.y)*T, jacket=p.c||COLORS[0];
+  if (px<-40 || px>VW+40 || py<-60 || py>VH+20) return;
+  if (remote){ ctx.font='700 12px "Chakra Petch",sans-serif'; ctx.textAlign='center'; const nw=ctx.measureText(p.name||'').width+10;
+    ctx.fillStyle='rgba(12,9,28,.75)'; ctx.fillRect(px+w/2-nw/2, py-20, nw, 15); ctx.fillStyle=jacket; ctx.fillText(p.name||'', px+w/2, py-9); }
+  const facing = remote ? (p.f||1) : p.facing, swinging = remote ? p.s : p.swing>0;
+  ctx.save(); ctx.translate(px+w/2, py); ctx.scale(facing,1);
+  const walk = Math.abs(p.vx||0)>.5 ? Math.sin(now*14)*3 : 0;
   ctx.fillStyle='#262b46'; rect(-6,h-12,5,12-Math.max(0,walk)); rect(1,h-12,5,12-Math.max(0,-walk));
   ctx.fillStyle='#0f0f16'; rect(-7,h-3-Math.max(0,walk),6,3); rect(1,h-3-Math.max(0,-walk),6,3);
   ctx.fillStyle='#6b4a2a'; rect(-11,h-26,4,12);
-  ctx.fillStyle='#1fa39a'; rect(-8,h-27,16,16); ctx.fillStyle='#ff3fa4'; rect(-8,h-27,16,2); rect(-1,h-25,2,14);
-  ctx.save(); ctx.translate(5,h-23); ctx.rotate(p.swing>0 ? -1.2+ (0.22-p.swing)*10 : .3);
-  ctx.fillStyle='#1fa39a'; rect(-2,0,4,9); ctx.fillStyle='#b9bdd0'; rect(-1,8,2,9); rect(-3,16,6,3); ctx.restore();
+  ctx.fillStyle=jacket; rect(-8,h-27,16,16); ctx.fillStyle='#ff3fa4'; rect(-8,h-27,16,2); rect(-1,h-25,2,14);
+  ctx.save(); ctx.translate(5,h-23); ctx.rotate(swinging ? (remote ? -1.2+Math.abs(Math.sin(now*12)) : -1.2+(0.22-p.swing)*10) : .3);
+  ctx.fillStyle=jacket; rect(-2,0,4,9); ctx.fillStyle='#b9bdd0'; rect(-1,8,2,9); rect(-3,16,6,3); ctx.restore();
   ctx.fillStyle='#e2a878'; rect(-6,h-39,12,12);
   ctx.fillStyle='#2b1a12'; rect(-7,h-41,14,5); rect(-7,h-38,3,6);
   ctx.fillStyle='#3ff0ff'; rect(-1,h-35,8,3); ctx.fillStyle='#ffffff'; rect(4,h-35,2,1);
@@ -793,8 +1088,13 @@ function hoverLabel(tx,ty){
   const n=TILES[t].n;
   if (t===ID.battery){ const s=batState.get(i);
     if (G.power==='simple') return `${n}: ${s==='ok'?'connected':'nothing touching it yet'}`;
-    return `${n}: ${s==='ok'?'loop complete':s==='short'?'SHORT CIRCUIT':'no complete loop yet'} (+ right, − left)`; }
+    const pct = G.power==='advanced' ? ` ${Math.ceil(charge(i))}%` : '';
+    return `${n}${pct}: ${s==='dead'?'flat! Crank it or swap it':s==='ok'?'loop complete':s==='short'?'SHORT CIRCUIT':'no complete loop yet'} (+ right, − left)`; }
   if (t===ID.transistor) return `${n}: ${trOn[i]?'on, current can pass left to right':'off. Power the wire on its top or bottom to turn it on'}`;
+  if (t===ID.and||t===ID.or||t===ID.not) return `${n}: ${trOn[i]?'on, current can pass left to right':'off'}`;
+  if (t===ID.burnt) return 'Burnt-out LED: no resistor in its loop. Dig it out and try again with a resistor.';
+  if (t===ID.crank) return `${n}: right-click or tap in Build to crank. Charges batteries touching it.`;
+  if (t===ID.resistor) return `${n}: ${powered[i]?'current flowing':'no current'}`;
   if (t===ID.sensor) return `${n}: ${sensHold[i]>0?'saw something move!':'watching for motion'}`;
   if (t===ID.switch) return `${n}: ${G.meta[i]?'on':'off'} (right-click to flip)`;
   if (TILES[t].load || t===ID.wire) return `${n}: ${powered[i]?'has power':'no power. Is it in a complete loop?'}`;
@@ -809,13 +1109,15 @@ function draw(){
     if (y>surfTop[x] && (t===0||TILES[t].comp)){ ctx.fillStyle='#1b1328'; ctx.fillRect(px,py,T,T); }
     if (!t) continue;
     if (t<=12) ctx.drawImage(SPR[t],px,py);
-    else drawComp(t,px,py,1,connsOf(i),powered[i], t===ID.battery?batState.get(i):t===ID.switch?G.meta[i]:t===ID.door?doorOpen[i]:t===ID.transistor?trOn[i]:t===ID.sensor?sensHold[i]>0:0);
+    else drawComp(t,px,py,1,connsOf(i),powered[i], t===ID.battery?batState.get(i):t===ID.switch?G.meta[i]:t===ID.door?doorOpen[i]:GATES.has(t)?trOn[i]:t===ID.sensor?sensHold[i]>0:t===ID.crank?!!(G.crankT&&G.crankT[i]):0,
+      t===ID.battery && G.power==='advanced' ? charge(i)/100 : undefined);
   }
   if (G.mine){ const px=(G.mine.x-cx)*T, py=(G.mine.y-cy)*T, k=Math.floor(G.mine.p*4);
     ctx.strokeStyle='rgba(0,0,0,.75)'; ctx.lineWidth=2; ctx.beginPath();
     if (k>=0){ ctx.moveTo(px+12,py+12); ctx.lineTo(px+5,py+4); } if (k>=1){ ctx.moveTo(px+12,py+12); ctx.lineTo(px+20,py+7); }
     if (k>=2){ ctx.moveTo(px+12,py+12); ctx.lineTo(px+8,py+21); } if (k>=3){ ctx.moveTo(px+12,py+12); ctx.lineTo(px+19,py+19); } ctx.stroke(); }
   for (const m of mobs) drawMob(m);
+  for (const r of NET.rp.values()) drawPlayer(r, true);
   drawPlayer();
   for (const q of parts){ ctx.fillStyle=q.c; ctx.globalAlpha=Math.min(1,q.t*2); ctx.fillRect((q.x-cx)*T,(q.y-cy)*T,q.s,q.s); }
   ctx.globalAlpha=1;
@@ -859,6 +1161,9 @@ function drawHUD(){
   else for (let k=0;k<5;k++) drawHeart(12+k*22, 12, k<p.hp);
   if (G.power==='simple'){ ctx.font='600 12px "Chakra Petch",sans-serif'; ctx.textAlign='left'; ctx.fillStyle='#aaa5d6'; ctx.fillText('Simple electricity', 12, 46); }
   ctx.font='600 13px "Chakra Petch",sans-serif'; ctx.textAlign='right'; ctx.fillStyle='#aaa5d6'; ctx.fillText(G.name, VW-12, 24);
+  if (NET.role==='host'){ ctx.fillStyle='#b6ff3f'; ctx.fillText(`Invite code ${NET.code} · ${NET.rp.size+1} playing`, VW-12, touchUI?110:60); }
+  if (NET.role==='guest'){ ctx.fillStyle='#b6ff3f'; ctx.fillText(`${NET.rp.size+1} playing`, VW-12, touchUI?110:60); }
+  if (G.power==='advanced' && !creative()){ ctx.textAlign='left'; ctx.fillStyle='#aaa5d6'; ctx.font='600 12px "Chakra Petch",sans-serif'; ctx.fillText('Advanced electricity', 12, 46); }
   if (muted) ctx.fillText('sound off (M)', VW-12, 42);
   if (msg.t>0 && msg.text){ ctx.font='600 15px "Chakra Petch",sans-serif'; const lines=wrapText(msg.text, touchUI?470:620), h=lines.length*20+14, w=Math.min(touchUI?500:660,Math.max(...lines.map(l=>ctx.measureText(l).width))+28);
     ctx.globalAlpha=Math.min(1,msg.t*2); panel((VW-w)/2, 40, w, h); ctx.fillStyle='#ece9ff'; ctx.textAlign='center';
@@ -896,7 +1201,7 @@ function unrle(s, len){ const a=new Uint8Array(len); let p=0; for (const seg of 
 const SAVE_VERSION = 1;
 function serialize(){
   const p=G.player, on=[]; for (let i=0;i<G.meta.length;i++) if (G.meta[i]) on.push(i);
-  return {game:'scrap-circuit', v:SAVE_VERSION, id:G.id, name:G.name, seed:G.seed, mode:G.mode, power:G.power, w:W, h:H, tiles:rle(G.tiles), on,
+  return {game:'scrap-circuit', v:SAVE_VERSION, id:G.id, name:G.name, seed:G.seed, mode:G.mode, power:G.power, charge:G.charge||{}, guests:G.guests||{}, w:W, h:H, tiles:rle(G.tiles), on,
     player:{x:p.x, y:p.y, hp:p.hp}, spawn:G.spawn, inv:G.inv, slots:G.slots, sel:G.sel, tipsDone:G.tipsDone, age:G.age, created:G.created, played:Date.now()};
 }
 function deserialize(d){
@@ -906,13 +1211,14 @@ function deserialize(d){
   const meta=new Uint8Array(W*H); (d.on||[]).forEach(i => { if (i>=0 && i<W*H) meta[i]=1; });
   const inv={}; for (const k of ITEM_ORDER) if (d.inv && d.inv[k]>0) inv[k]=Math.floor(d.inv[k]);
   return {id:String(d.id||newId()), name:String(d.name||'Imported world').slice(0,24), seed:d.seed|0, tiles:unrle(d.tiles,W*H), meta,
-    mode: d.mode==='creative' ? 'creative' : 'survival', power: d.power==='simple' ? 'simple' : 'real',
+    mode: d.mode==='creative' ? 'creative' : 'survival', power: ['simple','advanced'].includes(d.power) ? d.power : 'real',
+    charge: (d.charge && typeof d.charge==='object') ? d.charge : {}, guests: (d.guests && typeof d.guests==='object') ? d.guests : {},
     player:mkPlayer(+d.player.x||10, +d.player.y||10, d.player.hp|0||5), spawn:d.spawn||{x:10,y:10}, inv,
     slots:Array.isArray(d.slots)&&d.slots.length===9 ? d.slots.map(s=>ITEMS[s]?s:null) : DEFAULT_SLOTS.slice(),
     sel:clamp(d.sel|0,0,8), tipsDone:d.tipsDone??TIPS.length, age:+d.age||999, created:d.created||Date.now()};
 }
 function saveWorld(){
-  if (!G) return false;
+  if (!G || G.guest) return false;
   const ok = store.set(KEY+'w.'+G.id, JSON.stringify(serialize()));
   const l = listWorlds().filter(w => w.id!==G.id); l.unshift({id:G.id, name:G.name, played:Date.now(), mode:G.mode, power:G.power}); store.set(KEY+'worlds', JSON.stringify(l));
   return ok;
@@ -923,7 +1229,11 @@ function fromCode(s){ s=s.trim(); if (s.startsWith('SC1:')) s=decodeURIComponent
 /* ---------- world lifecycle ---------- */
 function startWorld(w){
   G=w; mobs=[]; parts=[]; floaties=[]; G.mine=null; G.atkT=0; sensHold.fill(0); trOn.fill(0);
-  G.mode = G.mode || 'survival'; G.power = G.power || 'real';
+  G.mode = G.mode || 'survival'; G.power = G.power || 'real'; G.charge = G.charge || {}; G.guests = G.guests || {};
+  mobSeq = 0; batState = new Map();
+  $('pauseCodeBtn').style.display = G.guest ? 'none' : ''; $('inviteBtn').style.display = G.guest ? 'none' : '';
+  $('quitBtn').textContent = G.guest ? 'Leave game' : 'Save and quit';
+  $('pauseNote').textContent = G.guest ? "You're playing in a friend's world. It saves on their device." : 'Your world saves itself every few seconds.';
   document.documentElement.classList.toggle('creative', G.mode==='creative');
   for (let x=0;x<W;x++) updSurf(x);
   makeBackdrop(G.seed);
@@ -935,14 +1245,15 @@ function startWorld(w){
 function newWorld(name, mode='survival', power='real'){
   const seed=(Math.random()*2**31)|0, g=genWorld(seed);
   startWorld({id:newId(), name:name||'Junkyard One', seed, mode, power, tiles:g.tiles, meta:new Uint8Array(W*H), player:mkPlayer(g.spawn.x,g.spawn.y,5), spawn:g.spawn,
-    inv:{wire:14, battery:1, switch:1, led:2, plate:4}, slots:DEFAULT_SLOTS.slice(), sel:0, tipsDone: mode==='creative' ? 2 : 0, age:0, created:Date.now()});
+    inv:{wire:14, battery:1, switch:1, led:2, resistor:2, plate:4}, charge:{}, guests:{}, slots:DEFAULT_SLOTS.slice(), sel:0, tipsDone: mode==='creative' ? 2 : 0, age:0, created:Date.now()});
+  if (power==='advanced' && mode!=='creative') setTimeout(() => { if (G && G.tipsDone<=1) say('Advanced electricity: batteries run down, LEDs need a resistor in their loop, and logic gates are in the workbench. Good luck, engineer.', 8); }, 300);
   if (mode==='creative'){ say(touchUI ? 'Creative mode: everything is unlimited and nothing attacks. Hold ▲ to fly up and ▼ to go down.' : 'Creative mode: everything is unlimited and nothing attacks. Hold W to fly up and S to go down.', 8); tipT=9; }
 }
 function loadWorld(id){
   const raw=store.get(KEY+'w.'+id); if (!raw){ renderMenu("Couldn't find that world's save."); return; }
   try { startWorld(deserialize(JSON.parse(raw))); } catch(e){ renderMenu("That world's save is damaged. If you have a save code for it, load that."); }
 }
-function quitToMenu(){ saveWorld(); G=null; document.documentElement.classList.remove('creative'); showOv('menu'); renderMenu(); }
+function quitToMenu(){ saveWorld(); if (NET.role) netStop(); G=null; mobs=[]; document.documentElement.classList.remove('creative'); showOv('menu'); renderMenu(); }
 
 /* ---------- overlays ---------- */
 let current='menu', helpReturn=null, codeReturn=null;
@@ -988,6 +1299,23 @@ $('codeBack').onclick = () => showOv(codeReturn);
 $('resumeBtn').onclick = () => showOv(null);
 $('pauseCodeBtn').onclick = () => { saveWorld(); openCode(serialize(),'pause'); };
 $('quitBtn').onclick = quitToMenu;
+function inviteStatus(t){ $('inviteMsg').textContent = t; }
+function joinMsg(t){ $('joinMsg').textContent = t; }
+function renderInvite(){
+  const on = NET.role==='host';
+  $('inviteOff').style.display = on ? 'none' : ''; $('inviteOn').style.display = on ? '' : 'none';
+  if (on){ $('inviteCode').textContent = NET.code; inviteStatus('');
+    const names=[...NET.rp.values()].map(r => r.name);
+    $('invitePlayers').textContent = names.length ? `Playing now: ${names.join(', ')}` : 'Waiting for friends to join…'; }
+  if (!$('hostName').value) $('hostName').value = me().name || '';
+}
+$('inviteBtn').onclick = () => { inviteStatus(''); renderInvite(); showOv('invite'); };
+$('inviteClose').onclick = () => showOv(null);
+$('hostBtn').onclick = () => hostStart();
+$('stopHostBtn').onclick = () => { netStop(); say('Sharing stopped. Your friends were sent back to their menus.', 4); };
+$('joinBtn').onclick = () => { initAudio(); joinGame($('joinCode').value, $('joinName').value); };
+$('joinCode').addEventListener('keydown', e => { if (e.key==='Enter') $('joinBtn').click(); });
+$('joinName').value = me().name || '';
 $('helpBtn').onclick = () => { if (current==='help') return; helpReturn = G ? (current||null) : 'menu'; showOv('help'); };
 $('helpClose').onclick = () => showOv(helpReturn);
 $('fsBtn').onclick = () => { try { if (document.fullscreenElement) document.exitFullscreen(); else $('wrap').requestFullscreen().catch(()=>{}); } catch(e){} };
@@ -1027,7 +1355,7 @@ window.addEventListener('keydown', e => {
   if (e.target.matches && e.target.matches('input,textarea')) return;
   const k=e.key.toLowerCase();
   if (k==='escape'){ if (!G) { if (current==='help') showOv('menu'); return; }
-    if (current===null){ saveWorld(); showOv('pause'); } else if (current==='craft'||current==='pause') showOv(null); else if (current==='help') showOv(helpReturn); else if (current==='code') showOv(codeReturn); return; }
+    if (current===null){ saveWorld(); showOv('pause'); } else if (current==='craft'||current==='pause'||current==='invite') showOv(null); else if (current==='help') showOv(helpReturn); else if (current==='code') showOv(codeReturn); return; }
   if (!G) return;
   if (k==='c'){ if (current===null) openCraft(); else if (current==='craft') showOv(null); return; }
   if (k==='h'){ if (current===null){ helpReturn=null; showOv('help'); } else if (current==='help') showOv(helpReturn); return; }
@@ -1055,7 +1383,7 @@ cv.addEventListener('pointerdown', e => {
   let btn = touch ? (touchMode==='build' ? 2 : 0) : e.button;
   if (touch && btn===2){ // in Build, pressing a bot bonks it and holding a placed thing picks it up
     const [tx,ty]=mouseTile(), t=tileAt(tx,ty);
-    if (mobAt(cam.x+mouse.mx/T, cam.y+mouse.my/T) || (t && t!==ID.switch && ty>=0)) btn=0; }
+    if (mobAt(cam.x+mouse.mx/T, cam.y+mouse.my/T) || (t && t!==ID.switch && t!==ID.crank && ty>=0)) btn=0; }
   if (btn===0){ mouse.l=true; mouse.lPress=true; }
   if (btn===2){ mouse.r=true; const [tx,ty]=mouseTile(); tryPlace(tx,ty,true); mouse.lastPlace=idx(tx,ty); }
 });
@@ -1102,10 +1430,10 @@ window.addEventListener('pagehide', () => saveWorld());
 makeSprites(); makeBackdrop(1); renderMenu();
 let last=performance.now();
 function frame(t){ const dt=Math.min(.05,(t-last)/1000); last=t; now+=dt;
-  try { if (G){ if (!paused) update(dt); draw(); } else drawAttract(); } catch(err){ console.error(err); }
+  try { if (G){ if (!paused || NET.role) update(dt); draw(); } else drawAttract(); } catch(err){ console.error(err); }
   requestAnimationFrame(frame); }
 requestAnimationFrame(frame);
-window.__sc = { get G(){ return G; }, powered:()=>powered, batState:()=>batState, recomputePower, tryPlace, breakTile, saveWorld, listWorlds, idx, ID, newWorld, loadWorld, quitToMenu, serialize, toCode, fromCode, importText, get mobs(){return mobs;}, spawnMob, cam };
+window.__sc = { get G(){ return G; }, net:NET, attack, powered:()=>powered, batState:()=>batState, recomputePower, tryPlace, breakTile, saveWorld, listWorlds, idx, ID, newWorld, loadWorld, quitToMenu, serialize, toCode, fromCode, importText, get mobs(){return mobs;}, spawnMob, cam };
 }
 </script>
 </body>
