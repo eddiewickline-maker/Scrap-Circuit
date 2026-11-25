@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scrap Circuit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: a kid's own game, built by his dad: playful, readable, a little rough on purpose
+   IDEA: a junk-shop arcade cabinet; the screen is the whole page
+   PICTURE: the game canvas itself, side-view neon junk city at night
+   COLOUR and TYPE: night violet ground, hot pink and cyan neon, lime for "on"; Chakra Petch
+   LAYOUT: small title bar, 16:9 stage, controls strip; overlays sit inside the stage */
+:root{color-scheme:dark;--bg:#0b0918;--panel:#16122c;--line:#3a3366;--ink:#ece9ff;--dim:#aaa5d6;--pink:#ff3fa4;--cyan:#3ff0ff;--lime:#b6ff3f}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 'Chakra Petch',system-ui,sans-serif}
+#wrap{display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 12px 16px;background:var(--bg);min-height:100vh}
+header,#stage,.keys{width:min(100%,calc((100vh - 110px)*16/9));min-width:min(100%,320px)}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+h1{margin:0;font-size:26px;line-height:1.05;color:var(--pink)} h1 span{color:var(--cyan)}
+.hb{display:flex;gap:8px}
+#stage{position:relative;aspect-ratio:16/9;border:2px solid var(--line);border-radius:10px;overflow:hidden;background:#05040c}
+canvas#game{display:block;width:100%;height:100%;cursor:crosshair;touch-action:none}
+.ov{position:absolute;inset:0;display:none;overflow:auto;background:rgba(8,6,22,.86);padding:clamp(10px,3vw,28px)}
+.ov.show{display:block}
+.card{max-width:620px;margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.card.wide{max-width:860px}
+h2{margin:0 0 4px;font-size:30px;line-height:1.05;color:var(--pink)} h3{margin:16px 0 6px;font-size:18px;color:var(--cyan)}
+p{margin:6px 0}
+.note{color:var(--dim);font-size:14px}
+button,.filebtn{font:inherit;font-weight:700;font-size:15px;min-height:44px;padding:8px 16px;border-radius:8px;border:2px solid var(--cyan);background:#0f2236;color:var(--cyan);cursor:pointer}
+button:hover,.filebtn:hover{background:var(--cyan);color:#06121c}
+button:focus-visible,.filebtn:focus-within,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--lime);outline-offset:2px}
+button.pink{border-color:var(--pink);color:var(--pink);background:#2a0f22} button.pink:hover{background:var(--pink);color:#1a0612}
+button.small{min-height:36px;padding:4px 12px;font-size:14px}
+button.lack{opacity:.55}
+.filebtn{display:inline-flex;align-items:center} .filebtn input{position:absolute;opacity:0;width:1px;height:1px}
+input,textarea{font:inherit;font-size:16px;background:#0b0918;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px;width:100%}
+textarea{font-family:ui-monospace,monospace;font-size:13px;resize:vertical}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.row input{flex:1 1 200px;width:auto}
+.choice{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0}
+.choice span{width:84px;color:var(--dim);font-size:14px}
+.choice label{display:inline-flex;gap:6px;align-items:center;min-height:40px;padding:4px 12px;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.choice label:has(input:checked){border-color:var(--pink);background:#2a0f22}
+.choice input{width:auto;accent-color:var(--pink);margin:0}
+.world{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
+.world .nm{flex:1 1 160px}
+details{margin-top:14px;border-top:1px solid var(--line);padding-top:10px} summary{cursor:pointer;color:var(--cyan);font-weight:700}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:16px}
+@media(max-width:700px){.cols{grid-template-columns:minmax(0,1fr)}}
+.inv{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px}
+.inv button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px;font-size:13px;min-height:84px;background:#100d22;border-color:var(--line);color:var(--ink)}
+.inv button:hover{background:#221c44;color:var(--ink)} .inv b{color:var(--lime)}
+.slots{display:flex;gap:4px;flex-wrap:wrap}
+.slots button{min-width:44px;padding:4px 6px;font-size:12px;background:#100d22;border-color:var(--line);color:var(--dim)}
+.slots button.sel{border-color:var(--pink);color:var(--ink)}
+.recipe{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.why{color:var(--lime)}
+#craftMsg{min-height:24px;color:var(--lime);font-weight:700}
+.keys{color:var(--dim);font-size:14px;text-align:center;margin:0}
+.keys b{color:var(--ink)}
+kbd{font:inherit;font-weight:700;color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:0 5px}
+ul{margin:6px 0;padding-left:20px}
+#stage{container-type:size;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#touch{position:absolute;inset:0;pointer-events:none;display:none;--b:clamp(46px,8.5cqw,76px)}
+.touch.playing #touch{display:block}
+#touch button{pointer-events:auto;position:absolute;width:var(--b);height:var(--b);min-height:0;padding:0;border-radius:50%;font-size:calc(var(--b)*.4);line-height:1;
+  background:rgba(15,34,54,.55);border:2px solid rgba(63,240,255,.75);color:var(--cyan);touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#touch button:hover{background:rgba(15,34,54,.55);color:var(--cyan)}
+#touch button.down{background:var(--cyan);color:#06121c}
+#tLeft{left:2.5%;bottom:5%} #tRight{left:calc(2.5% + var(--b) + 12px);bottom:5%}
+#tJump{right:2.5%;bottom:5%}
+#tDig{right:calc(2.5% + var(--b) + 12px);bottom:5%} #tBuild{right:2.5%;bottom:calc(5% + var(--b) + 12px)}
+#touch button.mode{font-size:calc(var(--b)*.26);font-weight:700}
+#touch #tDig.on{background:var(--cyan);color:#06121c}
+#touch #tBuild{border-color:rgba(255,63,164,.8);color:var(--pink);background:rgba(42,15,34,.55)}
+#touch #tBuild.on{background:var(--pink);color:#1a0612}
+#tDown{display:none;left:calc(2.5% + var(--b)/2 + 6px);bottom:calc(5% + var(--b) + 12px)}
+.creative #touch #tDown{display:block}
+#tCraft,#tPause{top:11%;width:auto!important;height:calc(var(--b)*.7)!important;padding:0 14px!important;border-radius:10px!important;font-size:15px!important;font-weight:700}
+#tPause{right:2.5%} #tCraft{right:calc(2.5% + var(--b)*.7 + 12px)}
+.rotate{display:none;color:var(--lime);font-weight:700;text-align:center;margin:0}
+.touch .keys{display:none}
+.touch header,.touch #stage{width:min(100%,calc((100vh - 60px)*16/9))}
+.touch h1{font-size:20px}
+@media (orientation:portrait){.touch .rotate{display:block} #touch{--b:clamp(36px,8.5cqw,76px)} #tCraft,#tPause{font-size:12px!important;padding:0 10px!important}}
+:fullscreen#wrap{justify-content:center;padding:6px}
+:fullscreen header,:fullscreen #stage{width:min(100%,calc((100vh - 60px)*16/9))}
+:fullscreen .keys{display:none}
+</style>
+</head>
+<body>
+<div id="wrap">
+<header>
+  <h1>Scrap <span>Circuit</span></h1>
+  <div class="hb"><button class="small" id="helpBtn">Help</button><button class="small" id="fsBtn">Fullscreen</button></div>
+</header>
+<div id="stage">
+  <canvas id="game" width="960" height="540" aria-label="Scrap Circuit game screen"></canvas>
+  <div id="touch">
+    <button id="tLeft" data-key="a" aria-label="Walk left">◀</button>
+    <button id="tRight" data-key="d" aria-label="Walk right">▶</button>
+    <button id="tDig" class="mode on" aria-label="Dig mode">Dig</button>
+    <button id="tBuild" class="mode" aria-label="Build mode">Build</button>
+    <button id="tDown" data-key="s" aria-label="Fly down">▼</button>
+    <button id="tJump" data-key="w" aria-label="Jump">▲</button>
+    <button id="tCraft" data-key="c" data-tap="1">Craft</button>
+    <button id="tPause" data-key="Escape" data-tap="1" aria-label="Pause">II</button>
+  </div>
+
+  <div class="ov show" id="menu"><div class="card">
+    <h2>Scrap Circuit</h2>
+    <p class="note">Dig through a neon junk city, scavenge parts from old electronics, and wire up real circuits. Watch out for scrap bots.</p>
+    <div class="row"><input id="newName" maxlength="24" placeholder="Junkyard One" aria-label="Name your new world"><button id="newBtn">New world</button></div>
+    <div class="choice" role="radiogroup" aria-label="Game mode"><span>Game</span>
+      <label><input type="radio" name="gmode" value="survival" checked> Survival</label>
+      <label><input type="radio" name="gmode" value="creative"> Creative</label></div>
+    <div class="choice" role="radiogroup" aria-label="Electricity"><span>Electricity</span>
+      <label><input type="radio" name="pmode" value="real" checked> Realistic</label>
+      <label><input type="radio" name="pmode" value="simple"> Simple</label></div>
+    <p class="note">Creative: unlimited parts, no bots, flying, instant digging. Simple electricity: anything touching a battery works, with no + and − sides and no short circuits. Good for friends and little brothers.</p>
+    <h3>Your worlds</h3>
+    <div id="worlds"></div>
+    <p class="note" id="storeNote"></p>
+    <details><summary>Load a world from a save code</summary>
+      <p class="note">Paste a save code you copied earlier, or pick a text file that has one in it.</p>
+      <textarea id="importText" rows="3" aria-label="Save code"></textarea>
+      <div class="row"><button id="importBtn">Load world</button><label class="filebtn">Pick a file<input type="file" id="importFile" accept=".txt,.json,text/plain,application/json"></label></div>
+      <p class="note" id="importMsg"></p>
+    </details>
+  </div></div>
+
+  <div class="ov" id="pause"><div class="card">
+    <h2>Paused</h2>
+    <p class="note" id="pauseNote">Your world saves itself every few seconds.</p>
+    <div class="row"><button id="resumeBtn">Resume</button><button id="pauseCodeBtn">Save code</button><button class="pink" id="quitBtn">Save and quit</button></div>
+  </div></div>
+
+  <div class="ov" id="craft"><div class="card wide">
+    <div class="row" style="justify-content:space-between;margin:0"><h2>Workbench</h2><button class="small" id="craftClose">Close (C)</button></div>
+    <p id="craftMsg"></p>
+    <div class="cols">
+      <div>
+        <h3>Your stuff</h3>
+        <p class="note">Pick a hotbar slot, then click an item to put it there.</p>
+        <div class="slots" id="slotRow"></div>
+        <div class="inv" id="invGrid" style="margin-top:8px"></div>
+      </div>
+      <div><h3>Make things</h3><div id="recipes"></div></div>
+    </div>
+  </div></div>
+
+  <div class="ov" id="help"><div class="card">
+    <div class="row" style="justify-content:space-between;margin:0"><h2>How to play</h2><button class="small" id="helpClose">Close</button></div>
+    <h3>Moving</h3>
+    <ul><li><b>On a phone or tablet:</b> ◀ ▶ walk, ▲ jumps. With <b>Dig</b> lit, hold on something to dig it or bonk a bot. With <b>Build</b> lit, tap to place, drag to lay wire, tap a switch to flip it, and hold on a part to pick it back up. Tap the hotbar to pick an item.</li>
+    <li><kbd>A</kbd> <kbd>D</kbd> or arrows to walk, <kbd>W</kbd> or <kbd>Space</kbd> to jump</li>
+    <li>Hold <b>left-click</b> to dig, or to bonk a bot</li>
+    <li><b>Right-click</b> to place the item you're holding. Hold and drag to lay wire.</li>
+    <li><b>Right-click a switch</b> to flip it</li>
+    <li><kbd>1</kbd>–<kbd>9</kbd> or the scroll wheel pick an item. <kbd>C</kbd> opens the workbench. <kbd>M</kbd> mutes. <kbd>Esc</kbd> pauses.</li></ul>
+    <h3>Circuits</h3>
+    <ul><li>A battery's <b>+</b> end is on its right, its <b>−</b> end on its left.</li>
+    <li>Electricity has to travel out of <b>+</b>, through your parts, and back into <b>−</b>. That full trip is a <b>circuit</b>, or loop.</li>
+    <li>A wire that dead-ends goes nowhere, so parts on it stay off.</li>
+    <li>Parts that touch are connected, even side by side. Leave a gap between wires that shouldn't join.</li>
+    <li>Wire straight from + to − with nothing in between is a <b>short circuit</b>. Nothing works, and in real life it gets dangerously hot.</li>
+    <li>Point at any part to see if it has power.</li></ul>
+    <h3>Gadgets</h3>
+    <ul><li><b>Transistor:</b> a switch that electricity flips. Current goes through it left to right, but only while the wire touching its top or bottom has power.</li>
+    <li><b>Motion sensor:</b> closes like a switch for a moment when something moves nearby.</li>
+    <li><b>Buzzer:</b> beeps while powered. Battery + motion sensor + buzzer in a loop = burglar alarm.</li>
+    <li><b>Electromagnet:</b> only a magnet while current flows. It pulls bots in and holds them stuck. Switch it off to let go.</li></ul>
+    <h3>Modes</h3>
+    <ul><li><b>Creative:</b> unlimited parts, no bots, instant digging. Hold W or ▲ to fly up and S or ▼ to go down.</li>
+    <li><b>Simple electricity:</b> anything touching a battery works. No + and − sides, no short circuits.</li>
+    <li>You pick both when you make a new world.</li></ul>
+    <h3>Scavenging</h3>
+    <ul><li>Old TVs, radios and laptops are full of parts. Dig them out.</li>
+    <li>Copper ore and scrap are deeper down. Take them to the workbench.</li>
+    <li>Bots won't appear near a lit lamp. Power doors keep them out of your base.</li></ul>
+  </div></div>
+
+  <div class="ov" id="code"><div class="card">
+    <h2>Save code</h2>
+    <p class="note">This page can't download files, so a save code is your backup. Copy it into a note or an email. To bring the world back, paste it in "Load a world from a save code" on the main menu, on any computer.</p>
+    <textarea id="codeText" rows="6" readonly aria-label="Save code"></textarea>
+    <div class="row"><button id="copyBtn">Copy</button><button class="small" id="codeBack">Back</button><span class="note" id="copyMsg"></span></div>
+  </div></div>
+</div>
+<p class="rotate">Turn your phone sideways for a bigger screen.</p>
+<p class="keys"><b>A D</b> move · <b>W</b> jump · <b>hold left-click</b> dig or bonk · <b>right-click</b> place or flip a switch · <b>1–9</b> pick · <b>C</b> workbench · <b>Esc</b> pause</p>
+</div>
+
+<script>
+{
+const cv = document.getElementById('game');
+let ctx = cv.getContext('2d');
+const VW = 960, VH = 540, T = 24, W = 160, H = 64;
+const $ = id => document.getElementById(id);
+
+/* ---------- data ---------- */
+const TILES = [
+  {n:'Air'},
+  {n:'Moss', solid:1, hard:.3, drop:'dirt'},
+  {n:'Dirt', solid:1, hard:.35, drop:'dirt'},
+  {n:'Concrete', solid:1, hard:.8, drop:'concrete'},
+  {n:'Stone', solid:1, hard:1, drop:'stone'},
+  {n:'Brick', solid:1, hard:.7, drop:'brick'},
+  {n:'Metal plate', solid:1, hard:1, drop:'plate'},
+  {n:'Copper ore', solid:1, hard:1, drop:'copper'},
+  {n:'Scrap pile', solid:1, hard:.8, drop:'scrap'},
+  {n:'Old TV', solid:1, hard:.6, salvage:'tv'},
+  {n:'Old radio', solid:1, hard:.6, salvage:'radio'},
+  {n:'Old laptop', solid:1, hard:.6, salvage:'laptop'},
+  {n:'Bedrock', solid:1, hard:Infinity},
+  {n:'Wire', hard:.12, drop:'wire', comp:1},
+  {n:'Battery', hard:.25, drop:'battery', comp:1},
+  {n:'Switch', hard:.2, drop:'switch', comp:1},
+  {n:'LED', hard:.2, drop:'led', comp:1, load:1},
+  {n:'Lamp', hard:.25, drop:'lamp', comp:1, load:1},
+  {n:'Motor', hard:.3, drop:'motor', comp:1, load:1},
+  {n:'Power door', hard:.5, drop:'door', comp:1, load:1},
+  {n:'Transistor', hard:.2, drop:'transistor', comp:1},
+  {n:'Electromagnet', hard:.4, drop:'magnet', comp:1, load:1},
+  {n:'Motion sensor', hard:.25, drop:'sensor', comp:1},
+  {n:'Buzzer', hard:.2, drop:'buzzer', comp:1, load:1}
+];
+const ID = {air:0,moss:1,dirt:2,concrete:3,stone:4,brick:5,plate:6,copper:7,scrap:8,tv:9,radio:10,laptop:11,bedrock:12,wire:13,battery:14,switch:15,led:16,lamp:17,motor:18,door:19,transistor:20,magnet:21,sensor:22,buzzer:23};
+const ITEMS = {
+  wire:{name:'Wire', tile:13, info:"Carries electricity. Power flows out of the battery's + end, through your parts, and back into the − end."},
+  battery:{name:'Battery', tile:14, info:'Stores energy. + is on the right end, − on the left. Nothing runs until there is a complete loop from + back to −.'},
+  switch:{name:'Switch', tile:15, info:'Right-click to flip it. Off makes a gap in the loop, so everything on that loop stops.'},
+  led:{name:'LED', tile:16, info:'A tiny light. It only glows when it is part of a complete loop.'},
+  lamp:{name:'Lamp', tile:17, info:"A big light. Bots won't show up near a lit lamp."},
+  motor:{name:'Motor', tile:18, info:'Turns electricity into spinning. Inside are coils of copper wire and magnets.'},
+  door:{name:'Power door', tile:19, info:"Opens while it has power and shuts when it doesn't. Bots can't get through a shut door. Stack two for a doorway."},
+  transistor:{name:'Transistor', tile:20, info:'A switch that electricity flips. Power the wire on its top or bottom (the "base") and current can flow through it left to right. Computers are made of billions of these.'},
+  sensor:{name:'Motion sensor', tile:22, info:'Works like a switch that closes by itself when something moves nearby, then opens again. Real ones see body heat.'},
+  magnet:{name:'Electromagnet', tile:21, info:'A coil of copper wire around iron. It is only a magnet while current flows. It pulls bots in and holds them stuck.'},
+  buzzer:{name:'Buzzer', tile:23, info:'Beeps while it has power. Wire it up with a motion sensor and you have a burglar alarm.'},
+  plate:{name:'Metal plate', tile:6, info:'A tough building block.'},
+  dirt:{name:'Dirt', tile:2, info:'Building block.'},
+  concrete:{name:'Concrete', tile:3, info:'Building block.'},
+  stone:{name:'Stone', tile:4, info:'Building block.'},
+  brick:{name:'Brick', tile:5, info:'Building block.'},
+  copper:{name:'Copper', info:'Copper ore. Real wires are made of copper. Make wire with it at the workbench (C).'},
+  scrap:{name:'Scrap metal', info:'Junk metal. Use it at the workbench (C).'}
+};
+const ITEM_ORDER = ['wire','battery','switch','led','lamp','motor','door','transistor','sensor','magnet','buzzer','plate','dirt','concrete','stone','brick','copper','scrap'];
+const DEFAULT_SLOTS = ['wire','battery','switch','led','lamp','motor','door','plate','dirt'];
+const RECIPES = [
+  {out:'wire', n:4, need:{copper:1}, why:'Electricity moves through copper easily.'},
+  {out:'switch', n:1, need:{scrap:1, wire:1}},
+  {out:'plate', n:2, need:{scrap:2}},
+  {out:'lamp', n:1, need:{led:2, scrap:1}},
+  {out:'motor', n:1, need:{copper:2, scrap:1}, why:'Copper coils plus magnets make it spin.'},
+  {out:'battery', n:1, need:{scrap:2, copper:1}},
+  {out:'door', n:1, need:{plate:2, motor:1}, why:'A motor slides the door open when it gets power.'},
+  {out:'transistor', n:2, need:{scrap:1, copper:1}, why:'Real ones are made from silicon, the stuff in sand.'},
+  {out:'sensor', n:1, need:{led:1, wire:1, scrap:1}},
+  {out:'buzzer', n:1, need:{scrap:1, wire:1}},
+  {out:'magnet', n:1, need:{plate:1, copper:2}, why:'Wrap copper wire around iron and run current through it.'}
+];
+const SALVAGE = {
+  tv:{name:'an old TV', loot:[['led',2],['wire',3],['scrap',2]], extra:[['switch',1,.4],['transistor',1,.5]]},
+  radio:{name:'an old radio', loot:[['switch',1],['wire',3],['scrap',1]], extra:[['battery',1,.5],['transistor',2,.6],['buzzer',1,.35]]},
+  laptop:{name:'an old laptop', loot:[['battery',2],['led',1],['wire',2]], extra:[['motor',1,.7],['transistor',2,.7]]}
+};
+const SIMPLE_TIPS = [null, null,
+  'Try a circuit: place a battery, then lay wire from it to an LED. In Simple electricity, anything touching a battery works.',
+  'Put a switch in the wire to turn things on and off.'];
+const TIPS = [
+  'Welcome, scavenger! A and D to walk, W or Space to jump.',
+  'Hold left-click to dig. Old TVs, radios and laptops are full of parts.',
+  "Try a circuit: place a battery, then lay wire from its + end (right side) around to its − end (left side). Right-click and drag lays wire.",
+  'Put an LED somewhere in that loop and it lights up. Break the loop and it goes dark.',
+  'Scrap bots roam the city. Bonk them with left-click, or hide behind a power door.',
+  'Press C for the workbench. Copper ore deep underground makes more wire.'
+];
+const TOUCH_TIPS = [
+  'Welcome, scavenger! Use ◀ ▶ to walk and ▲ to jump.',
+  'Tap or hold the screen to dig. Old TVs, radios and laptops are full of parts.',
+  "Try a circuit: tap Dig to switch to Build, pick the battery, and place it. Then drag wire from its + end (right side) around to its − end (left side).",
+  null, null,
+  'Tap Craft for the workbench. Copper ore deep underground makes more wire.'
+];
+let touchUI = false, touchMode = 'dig', activeTouch = null;
+
+/* ---------- helpers ---------- */
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const idx = (x,y) => y*W + x;
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const newId = () => 'w' + Date.now().toString(36) + Math.floor(Math.random()*1e6).toString(36);
+
+/* ---------- sound ---------- */
+let AC = null, muted = false;
+function initAudio(){ if (AC) return; try { AC = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){} }
+function tone(f, d=.08, type='square', v=.035){
+  if (!AC || muted) return;
+  try { const o=AC.createOscillator(), g=AC.createGain(); o.type=type; o.frequency.value=f;
+    g.gain.setValueAtTime(v, AC.currentTime); g.gain.exponentialRampToValueAtTime(.0001, AC.currentTime+d);
+    o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime+d+.02); } catch(e){}
+}
+
+/* ---------- world state ---------- */
+let G = null, paused = true, now = 0;
+let powered = new Uint8Array(W*H), doorOpen = new Uint8Array(W*H), surfTop = new Int16Array(W);
+let lights = [], batState = new Map(), mobs = [], parts = [], floaties = [];
+let cam = {x:0, y:8}, msg = {text:'', t:0}, info = {key:null, t:0};
+let spawnT = 4, saveT = 15, tipT = 2, regenT = 0, jumpBuf = 0;
+let trOn = new Uint8Array(W*H), live = new Uint8Array(W*H), sensHold = new Float32Array(W*H), sensors = [], magnets = [], buzzers = [], buzzT = 0, buzzFlip = false;
+const creative = () => G && G.mode==='creative';
+const mouse = {mx:0, my:0, l:false, r:false, lPress:false, lastPlace:-1, inside:false};
+const keys = {};
+
+function tileAt(x,y){ if (x<0||x>=W||y>=H) return ID.bedrock; if (y<0) return 0; return G.tiles[idx(x,y)]; }
+function isSolid(x,y){
+  if (x<0||x>=W||y>=H) return true; if (y<0) return false;
+  const i = idx(x,y), t = G.tiles[i];
+  if (t === ID.door) return !doorOpen[i];
+  return !!TILES[t].solid;
+}
+function updSurf(x){ let y=0; while (y<H && !(TILES[G.tiles[idx(x,y)]].solid)) y++; surfTop[x]=y; }
+
+/* ---------- generation ---------- */
+function genWorld(seed){
+  const r = mulberry(seed), tiles = new Uint8Array(W*H), surf = new Array(W);
+  const pts = []; for (let i=0;i<=W/10+2;i++) pts.push((r()*2-1)*5);
+  for (let x=0;x<W;x++){ const i=Math.floor(x/10), f=(x%10)/10, s=(1-Math.cos(f*Math.PI))/2;
+    surf[x] = Math.round(24 + pts[i]*(1-s) + pts[i+1]*s); }
+  for (let x=1;x<W;x++) if (r()<.12) surf[x] += r()<.5?-1:1;
+  for (let x=3;x<24;x++) surf[x] = surf[12];
+  const ruins = [];
+  for (let x=34; x<W-16;){ const w=6+Math.floor(r()*5); ruins.push({x, w, h:5+Math.floor(r()*4)});
+    const base = surf[x+Math.floor(w/2)]; for (let i=-1;i<=w;i++) surf[x+i]=base; x += w+14+Math.floor(r()*16); }
+  for (let x=0;x<W;x++){ const s=surf[x], dd=3+Math.floor(r()*2), cd=s+dd+5+Math.floor(r()*3);
+    for (let y=0;y<H;y++){ let t=0;
+      if (y>=H-1 || (y===H-2 && r()<.6)) t=ID.bedrock;
+      else if (y<s) t=0; else if (y===s) t=ID.moss; else if (y<=s+dd) t=ID.dirt;
+      else if (y<=cd) t = r()<.14 ? ID.scrap : ID.concrete; else t=ID.stone;
+      if ((t===ID.dirt||t===ID.concrete) && y>s+1 && r()<.012) t=[ID.tv,ID.radio,ID.laptop][Math.floor(r()*3)];
+      tiles[idx(x,y)] = t; } }
+  for (let i=0;i<190;i++){ let x=Math.floor(r()*W), y=30+Math.floor(r()*(H-33)); const type=r()<.6?ID.copper:ID.scrap, len=3+Math.floor(r()*5);
+    for (let k=0;k<len;k++){ if (x>=0&&x<W&&y>0&&y<H-2&&tiles[idx(x,y)]===ID.stone) tiles[idx(x,y)]=type; x+=Math.floor(r()*3)-1; y+=Math.floor(r()*3)-1; } }
+  for (let i=0;i<12;i++){ let x=r()*W, y=38+r()*(H-46), a=r()*Math.PI*2; const len=30+r()*60;
+    for (let k=0;k<len;k++){ const rad = r()<.3?2:1;
+      for (let dy=-rad;dy<=rad;dy++) for (let dx=-rad;dx<=rad;dx++){ const cx=Math.round(x+dx), cy=Math.round(y+dy);
+        if (cx>0&&cx<W-1&&cy>surf[cx]+7&&cy<H-2) tiles[idx(cx,cy)]=0; }
+      a += (r()-.5)*.8; x += Math.cos(a); y += Math.sin(a)*.6; } }
+  const junk = () => [ID.tv,ID.radio,ID.laptop][Math.floor(r()*3)];
+  for (const b of ruins){ const base=surf[b.x];
+    for (let i=0;i<b.w;i++) for (let j=1;j<=b.h;j++){ const x=b.x+i, y=base-j; if (y<1) continue; let t=0;
+      if (i===0||i===b.w-1) t = (i===0&&j<=2) ? 0 : ID.brick;
+      if (j===b.h) t = r()<.75 ? ID.concrete : 0;
+      if (t===ID.brick && j>2 && r()<.15) t=0;
+      tiles[idx(x,y)] = t; }
+    tiles[idx(b.x+2, base-1)] = junk();
+    if (r()<.6) tiles[idx(b.x+b.w-2, base-1)] = junk(); }
+  for (let x=28; x<W-4; x+=18+Math.floor(r()*20)){
+    if (ruins.some(b => x>=b.x-2 && x<=b.x+b.w+1)) continue;
+    const s=surf[x]; tiles[idx(x,s-1)]=junk(); if (r()<.6) tiles[idx(x,s-2)]=junk(); }
+  tiles[idx(17, surf[17]-1)] = ID.tv; tiles[idx(20, surf[20]-1)] = ID.radio;
+  return {tiles, spawn:{x:10, y:surf[10]-1.8}};
+}
+
+/* ---------- circuits ---------- */
+const COND = new Uint8Array(32); [13,16,17,18,19,21,23].forEach(i => COND[i]=1);
+const stampA = new Int32Array(W*H), stampB = new Int32Array(W*H), deg = new Uint8Array(W*H), gone = new Uint8Array(W*H);
+let sA = 0, sB = 0;
+function conducts(i){ const t=G.tiles[i];
+  if (t===ID.switch) return G.meta[i]===1; if (t===ID.transistor) return trOn[i]===1; if (t===ID.sensor) return sensHold[i]>0;
+  return COND[t]===1; }
+const isLoad = i => !!TILES[G.tiles[i]].load;
+function nbrs(i){ const x=i%W, y=(i/W)|0, o=[]; if (x>0) o.push(i-1); if (x<W-1) o.push(i+1); if (y>0) o.push(i-W); if (y<H-1) o.push(i+W); return o; }
+// A transistor only passes current left-right; its top and bottom are the base, which doesn't join the path.
+function linkN(i){ const o=nbrs(i);
+  if (G.tiles[i]===ID.transistor) return o.filter(n => n===i-1 || n===i+1);
+  return o.filter(n => !((n===i-W || n===i+W) && G.tiles[n]===ID.transistor)); }
+
+function solveOnce(){
+  powered.fill(0); live.fill(0); batState = new Map();
+  for (let b=0;b<W*H;b++){
+    if (G.tiles[b] !== ID.battery) continue;
+    if (G.power==='simple'){
+      sA++; const comp=[]; for (const n of nbrs(b)) if (conducts(n) && stampA[n]!==sA){ stampA[n]=sA; comp.push(n); }
+      for (let q=0;q<comp.length;q++) for (const n of linkN(comp[q])) if (stampA[n]!==sA && conducts(n)){ stampA[n]=sA; comp.push(n); }
+      for (const i of comp){ powered[i]=1; live[i]=1; }
+      batState.set(b, comp.length ? 'ok' : 'open'); continue;
+    }
+    const x = b%W; if (x===0||x===W-1){ batState.set(b,'open'); continue; }
+    const plus=b+1, minus=b-1;
+    if (!conducts(plus)){ batState.set(b,'open'); continue; }
+    sA++; const comp=[plus]; stampA[plus]=sA;
+    for (let q=0;q<comp.length;q++) for (const n of linkN(comp[q])) if (stampA[n]!==sA && conducts(n)){ stampA[n]=sA; comp.push(n); }
+    if (!conducts(minus) || stampA[minus]!==sA){ for (const i of comp) live[i]=1; batState.set(b,'open'); continue; }
+    let short=false;
+    if (!isLoad(plus) && !isLoad(minus)){ sB++; const s=[plus]; stampB[plus]=sB;
+      outer: for (let q=0;q<s.length;q++) for (const n of linkN(s[q])) if (stampB[n]!==sB && stampA[n]===sA && !isLoad(n)){
+        if (n===minus){ short=true; break outer; } stampB[n]=sB; s.push(n); } }
+    if (short){ batState.set(b,'short'); continue; }
+    for (const i of comp) live[i]=1;
+    for (const i of comp){ gone[i]=0; let d=0; for (const n of linkN(i)) if (stampA[n]===sA) d++; deg[i]=d; }
+    const q=[]; for (const i of comp) if (deg[i]<=1 && i!==plus && i!==minus) q.push(i);
+    while (q.length){ const i=q.pop(); if (gone[i]) continue; gone[i]=1;
+      for (const n of linkN(i)) if (stampA[n]===sA && !gone[n]){ deg[n]--; if (deg[n]<=1 && n!==plus && n!==minus) q.push(n); } }
+    for (const i of comp) if (!gone[i]) powered[i]=1;
+    batState.set(b,'ok');
+  }
+}
+
+function recomputePower(){
+  const old = batState;
+  const trs = []; for (let i=0;i<W*H;i++) if (G.tiles[i]===ID.transistor) trs.push(i);
+  trOn.fill(0);
+  for (let pass=0; pass<8; pass++){
+    solveOnce(); let changed=false;
+    for (const i of trs){ const y=(i/W)|0; const on = ((y>0 && live[i-W]) || (y<H-1 && live[i+W])) ? 1 : 0;
+      if (on!==trOn[i]){ trOn[i]=on; changed=true; } }
+    if (!changed) break;
+  }
+  doorOpen.fill(0); lights = []; sensors = []; magnets = []; buzzers = [];
+  for (let i=0;i<W*H;i++){
+    const t = G.tiles[i];
+    if (t===ID.sensor) sensors.push(i);
+    if (powered[i] && t===ID.magnet){ magnets.push(i); lights.push({x:i%W+.5, y:((i/W)|0)+.5, r:2.5, c:'110,150,255'}); }
+    if (powered[i] && t===ID.buzzer) buzzers.push(i);
+    if (t===ID.door && powered[i] && !doorOpen[i]){
+      let j=i; while (j>=0 && G.tiles[j]===ID.door){ doorOpen[j]=1; j-=W; }
+      j=i+W; while (j<W*H && G.tiles[j]===ID.door){ doorOpen[j]=1; j+=W; } }
+    if (powered[i] && (t===ID.led||t===ID.lamp)) lights.push({x:i%W+.5, y:((i/W)|0)+.5, r:t===ID.lamp?8:3.5, c:t===ID.lamp?'255,226,150':'255,80,180', lamp:t===ID.lamp});
+  }
+  const p = G.player;
+  if (p) for (let y=Math.floor(p.y); y<=Math.floor(p.y+p.h); y++) for (let x=Math.floor(p.x); x<=Math.floor(p.x+p.w); x++)
+    if (x>=0&&x<W&&y>=0&&y<H && G.tiles[idx(x,y)]===ID.door) doorOpen[idx(x,y)]=1;
+  if (G.power!=='simple') for (const [b,s] of batState) if (s==='short' && old.get(b)!=='short'){
+    say("Short circuit! The wire runs straight from + to − with nothing in between. Nothing works, and a real one gets hot fast. Put a part in the loop.", 8);
+    tone(90,.4,'sawtooth',.05); }
+}
+
+/* ---------- entities ---------- */
+function mkPlayer(x,y,hp){ return {x, y, w:.7, h:1.7, vx:0, vy:0, hp:hp??5, hurt:0, knock:0, facing:1, onGround:false, swing:0}; }
+function overlapsSolid(x,y,w,h){
+  const x0=Math.floor(x), x1=Math.floor(x+w-1e-6), y0=Math.floor(y), y1=Math.floor(y+h-1e-6);
+  for (let ty=y0;ty<=y1;ty++) for (let tx=x0;tx<=x1;tx++) if (isSolid(tx,ty)) return true;
+  return false;
+}
+function move(e, dt){
+  e.hitWall=false; e.onGround=false;
+  const steps = Math.ceil(Math.max(Math.abs(e.vx*dt), Math.abs(e.vy*dt))/.3) || 1;
+  let sx=e.vx*dt/steps, sy=e.vy*dt/steps;
+  for (let s=0;s<steps;s++){
+    if (sx){ e.x+=sx; if (overlapsSolid(e.x,e.y,e.w,e.h)){ e.x = sx>0 ? Math.floor(e.x+e.w)-e.w-.001 : Math.floor(e.x)+1.001; e.vx=0; sx=0; e.hitWall=true; } }
+    if (sy){ e.y+=sy; if (overlapsSolid(e.x,e.y,e.w,e.h)){ if (sy>0){ e.y=Math.floor(e.y+e.h)-e.h-.001; e.onGround=true; } else e.y=Math.floor(e.y)+1.001; e.vy=0; sy=0; } }
+  }
+}
+const boxHit = (a,b) => a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y;
+const tileBox = (tx,ty) => ({x:tx, y:ty, w:1, h:1});
+function spawnY(x){ let y=0; while (y<H-1 && !isSolid(x,y)) y++; return y-1.8; }
+
+function say(t, s=5){ msg.text=t; msg.t=s; }
+function give(k, n, x, y){ G.inv[k]=(G.inv[k]||0)+n; floaties.push({text:`+${n} ${ITEMS[k].name}`, x, y, t:1.6}); }
+function burst(x,y,c,n,sp=4){ for (let k=0;k<n;k++) parts.push({x, y, vx:(Math.random()-.5)*sp*2, vy:(Math.random()-.8)*sp, t:.5+Math.random()*.5, c, s:2+Math.random()*3}); }
+
+function breakTile(tx,ty){
+  const i=idx(tx,ty), t=G.tiles[i], def=TILES[t];
+  if (creative()){ burst(tx+.5,ty+.5,'#8a7f9a',6); tone(220,.04,'square',.02); }
+  else if (def.salvage){ const S=SALVAGE[def.salvage], got=[];
+    for (const [k,n] of S.loot){ G.inv[k]=(G.inv[k]||0)+n; got.push(`${n} ${ITEMS[k].name}`); }
+    for (const [k,n,ch] of S.extra) if (Math.random()<ch){ G.inv[k]=(G.inv[k]||0)+n; got.push(`${n} ${ITEMS[k].name}${k==='motor'?' (its cooling fan)':''}`); }
+    say(`You took apart ${S.name}: ${got.join(', ')}.`, 5); tone(660,.08,'triangle'); setTimeout(()=>tone(880,.1,'triangle'),90);
+    burst(tx+.5,ty+.5,'#3ff0ff',14); }
+  else if (def.drop){ give(def.drop,1,tx+.5,ty); burst(tx+.5,ty+.5, t===ID.copper?'#e07b39':'#8a7f9a', 8); tone(220,.05,'square',.025); }
+  G.tiles[i]=0; G.meta[i]=0; updSurf(tx); recomputePower();
+}
+function tryPlace(tx,ty, allowToggle){
+  if (tx<0||tx>=W||ty<0||ty>=H) return;
+  const p=G.player, i=idx(tx,ty), t=G.tiles[i];
+  if (Math.hypot(tx+.5-(p.x+p.w/2), ty+.5-(p.y+p.h*.35)) > 5.5) return;
+  if (t===ID.switch && allowToggle){ G.meta[i]=G.meta[i]?0:1; recomputePower(); tone(G.meta[i]?780:340,.06); return; }
+  if (t!==0) return;
+  const k=G.slots[G.sel], it=ITEMS[k];
+  if (!it) return;
+  if (!it.tile){ say(`${it.name} can't be placed. Take it to the workbench (C).`, 3); return; }
+  if (!creative() && !(G.inv[k]>0)){ say(`You're out of ${it.name}. Scavenge or craft more.`, 3); return; }
+  const solid = TILES[it.tile].solid || it.tile===ID.door;
+  if (solid && (boxHit(p, tileBox(tx,ty)) || mobs.some(m => boxHit(m, tileBox(tx,ty))))) return;
+  G.tiles[i]=it.tile; G.meta[i] = it.tile===ID.switch ? 1 : 0; if (!creative()) G.inv[k]--;
+  if (it.tile===ID.sensor) sensHold[i]=0;
+  updSurf(tx); recomputePower(); tone(520,.04,'square',.025);
+}
+function hurtPlayer(dir){
+  if (creative()) return;
+  const p=G.player; p.hp--; p.hurt=1; p.knock=.25; p.vx=dir*9; p.vy=-7; regenT=0;
+  tone(110,.25,'sawtooth',.05); burst(p.x+p.w/2,p.y+p.h/2,'#ffe14a',10);
+  if (p.hp<=0){ say('Zapped out! Rebooting at the start. You kept all your stuff.', 5);
+    p.hp=5; p.x=G.spawn.x; p.y=spawnY(Math.floor(G.spawn.x)); p.vx=p.vy=0; p.hurt=2; mobs=[]; }
+}
+function attack(m){
+  const p=G.player, dir=Math.sign(m.x-p.x)||1;
+  m.hp--; m.hurt=.35; m.vx=dir*7; m.vy=-5; p.swing=.22;
+  burst(m.x+m.w/2,m.y+m.h/2,'#ffe14a',8); tone(240,.06,'square',.04);
+  if (m.hp<=0){ burst(m.x+m.w/2,m.y+m.h/2,'#cfc8ff',22,6); tone(520,.08,'triangle'); setTimeout(()=>tone(320,.12,'triangle'),70);
+    give('scrap', 1+Math.floor(Math.random()*2), m.x+m.w/2, m.y);
+    if (Math.random()<.35) give('wire',2,m.x+m.w/2,m.y-.6); }
+}
+function mobAt(wx, wy){
+  const p=G.player, pcx=p.x+p.w/2, pcy=p.y+p.h*.35;
+  return mobs.find(m => wx>m.x-.25 && wx<m.x+m.w+.25 && wy>m.y-.25 && wy<m.y+m.h+.25 && Math.hypot(m.x+m.w/2-pcx, m.y+m.h/2-pcy)<4.5);
+}
+function spawnMob(){
+  const p=G.player, side=Math.random()<.5?-1:1, x=Math.floor(p.x+side*(26+Math.random()*12));
+  if (x<2||x>W-3) return;
+  if (lights.some(l => l.lamp && Math.abs(l.x-x)<12 && Math.abs(l.y-surfTop[x])<12)) return;
+  const drone = Math.random()<.3, y = surfTop[x] - (drone?6:1.5);
+  mobs.push(drone ? {type:'drone', x, y, w:.9, h:.6, vx:0, vy:0, hp:2, hurt:0, t:Math.random()*9}
+                  : {type:'bot', x, y, w:.8, h:1.3, vx:0, vy:0, hp:3, hurt:0, dir:-side, t:0});
+}
+
+/* ---------- update ---------- */
+function update(dt){
+  G.age += dt;
+  const p = G.player;
+  const cre = creative();
+  if (G.tipsDone < TIPS.length){ tipT-=dt; if (tipT<=0){
+    if (cre && G.tipsDone===4) G.tipsDone++;
+    const n=G.tipsDone; if (n<TIPS.length){ say((G.power==='simple' && SIMPLE_TIPS[n]) || (touchUI && TOUCH_TIPS[n]) || TIPS[n], 8); G.tipsDone++; } tipT=8.5; } }
+  // player
+  let ax=0; if (keys.a||keys.arrowleft) ax-=1; if (keys.d||keys.arrowright) ax+=1;
+  if (p.knock>0) p.knock-=dt; else p.vx += (ax*6.5-p.vx)*Math.min(1, dt*(p.onGround?14:6));
+  const up = keys.w||keys[' ']||keys.arrowup, down = keys.s||keys.arrowdown;
+  if (cre){ if (up) p.vy=-7.5; else if (down) p.vy=10; else p.vy=Math.min(p.vy+40*dt, 24); }
+  else {
+    if (up) jumpBuf=.12; else jumpBuf-=dt;
+    if (jumpBuf>0 && p.onGround){ p.vy=-12.5; jumpBuf=0; tone(300,.05,'triangle',.02); }
+    p.vy = Math.min(p.vy+40*dt, 24);
+  }
+  move(p,dt); if (ax) p.facing=ax;
+  if (p.hurt>0) p.hurt-=dt; if (p.swing>0) p.swing-=dt;
+  if (p.y>H+2){ p.x=G.spawn.x; p.y=spawnY(Math.floor(p.x)); p.vy=0; }
+  regenT += dt; if (regenT>12 && p.hp<5){ p.hp++; regenT=0; }
+  // mouse
+  const wx = cam.x + mouse.mx/T, wy = cam.y + mouse.my/T, tx = Math.floor(wx), ty = Math.floor(wy);
+  const pcx = p.x+p.w/2, pcy = p.y+p.h*.35;
+  const target = mobAt(wx, wy);
+  G.atkT = (G.atkT||0) - dt;
+  const inWorld = tx>=0 && tx<W && ty>=0 && ty<H;
+  if (mouse.l && target){ if (G.atkT<=0){ attack(target); G.atkT=.35; } G.mine=null; }
+  else if (mouse.l && inWorld && G.tiles[idx(tx,ty)] && Math.hypot(tx+.5-pcx, ty+.5-pcy)<=5.5){
+    const t=G.tiles[idx(tx,ty)], hard=TILES[t].hard;
+    if (hard!==Infinity){
+      if (!G.mine || G.mine.x!==tx || G.mine.y!==ty) G.mine={x:tx, y:ty, p:0};
+      G.mine.p += dt/hard*(cre?12:1); p.swing = p.swing>0 ? p.swing : .18;
+      if (Math.random()<dt*12) burst(tx+.5,ty+.5,'#8a7f9a',1,2);
+      if (G.mine.p>=1){ breakTile(tx,ty); G.mine=null; }
+    } else if (mouse.lPress) say("Bedrock. Nothing gets through that.", 2);
+  } else {
+    if (mouse.lPress && inWorld && G.tiles[idx(tx,ty)]) say('Too far away. Walk closer.', 1.5);
+    G.mine=null;
+  }
+  mouse.lPress=false;
+  // motion sensors: close for 1.5 s after something moves within 4.5 tiles
+  let sensChanged=false;
+  for (const i of sensors){ const was=sensHold[i]>0, sx=i%W+.5, sy=((i/W)|0)+.5;
+    let seen = Math.hypot(pcx-sx, p.y+p.h/2-sy)<4.5 && Math.hypot(p.vx,p.vy)>.3;
+    if (!seen) for (const m of mobs) if (!m.held && Math.hypot(m.x+m.w/2-sx, m.y+m.h/2-sy)<4.5 && Math.hypot(m.vx,m.vy)>.3){ seen=true; break; }
+    sensHold[i] = seen ? 1.5 : Math.max(0, sensHold[i]-dt);
+    if ((sensHold[i]>0)!==was) sensChanged=true; }
+  if (sensChanged) recomputePower();
+  // buzzers
+  buzzT-=dt;
+  if (buzzT<=0 && buzzers.some(i => Math.hypot(i%W+.5-pcx, ((i/W)|0)+.5-pcy)<22)){ buzzT=.42; buzzFlip=!buzzFlip; tone(buzzFlip?1180:880,.14,'square',.02); }
+  // mobs
+  if (!cre && G.age>25){ spawnT-=dt; if (spawnT<=0){ spawnT=5+Math.random()*4; if (mobs.length<5) spawnMob(); } }
+  if (cre) mobs=[];
+  for (const m of mobs){
+    m.t+=dt; if (m.hurt>0) m.hurt-=dt;
+    const dx=(p.x+p.w/2)-(m.x+m.w/2), dy=(p.y+p.h/2)-(m.y+m.h/2), d=Math.hypot(dx,dy);
+    // electromagnets pull bots in and hold them
+    m.held=false; let mag=null, md=6;
+    for (const i of magnets){ const d2=Math.hypot(i%W+.5-(m.x+m.w/2), ((i/W)|0)+.5-(m.y+m.h/2)); if (d2<md){ md=d2; mag=i; } }
+    if (mag!==null){
+      const gx=mag%W+.5-m.w/2, gy=((mag/W)|0)+.5-m.h/2;
+      if (md<1.2){ m.held=true; m.x+=(gx-m.x)*Math.min(1,dt*10); m.y+=(gy-m.y)*Math.min(1,dt*10); m.vx=m.vy=0;
+        if (Math.random()<dt*6) burst(m.x+m.w/2, m.y+m.h/2, '#7fa8ff', 1, 2); continue; }
+      m.vx = (gx-m.x)/md*6; m.vy = (gy-m.y)/md*6; move(m,dt); continue;
+    }
+    if (m.type==='bot'){
+      const chase=d<14, sp=chase?2.6:1;
+      if (m.hurt<=0){ if (chase) m.dir=Math.sign(dx)||1; else if (Math.random()<dt*.3) m.dir*=-1; m.vx += (m.dir*sp-m.vx)*Math.min(1,dt*6); }
+      m.vy=Math.min(m.vy+40*dt,24); move(m,dt); if (m.hitWall && m.onGround) m.vy=-11;
+    } else {
+      if (m.hurt<=0){ if (d<16){ m.vx += (Math.sign(dx)*3-m.vx)*dt*2; m.vy += (Math.sign(dy-2)*2.2-m.vy)*dt*2; } else { m.vx*=.98; m.vy=Math.sin(m.t*1.5)*.8; } }
+      else { m.vy *= .95; }
+      move(m,dt);
+    }
+    if (boxHit(m,p) && p.hurt<=0){ const dir=Math.sign(dx)||1; hurtPlayer(dir); m.vx=-dir*4; }
+  }
+  mobs = mobs.filter(m => m.hp>0 && Math.abs(m.x-p.x)<70 && m.y<H);
+  // fx
+  for (const q of parts){ q.t-=dt; q.vy+=14*dt; q.x+=q.vx*dt; q.y+=q.vy*dt; }
+  parts = parts.filter(q => q.t>0);
+  for (const f of floaties){ f.t-=dt; f.y-=dt*.8; }
+  floaties = floaties.filter(f => f.t>0);
+  for (const [b,s] of batState) if (s==='short' && Math.random()<dt*10) burst(b%W+.5, ((b/W)|0)+.3, '#ffe14a', 2, 3);
+  if (msg.t>0) msg.t-=dt; if (info.t>0) info.t-=dt;
+  saveT-=dt; if (saveT<=0){ saveWorld(); saveT=20; }
+  // camera
+  const vwT=VW/T, vhT=VH/T;
+  const cxT = clamp(p.x+p.w/2-vwT/2, 0, W-vwT), cyT = clamp(p.y+p.h/2-vhT/2, 0, H-vhT);
+  cam.x += (cxT-cam.x)*Math.min(1,dt*8); cam.y += (cyT-cam.y)*Math.min(1,dt*8);
+}
+
+/* ---------- drawing ---------- */
+const SPR = {};
+function makeSprites(){
+  const r = mulberry(7);
+  const base = {1:['#3b2a24','#4a352c','#2c1f1b'],2:['#3b2a24','#4a352c','#2c1f1b'],3:['#555463','#646373','#474654'],4:['#3a3749','#47435c','#2d2a3a'],7:['#3a3749','#47435c','#2d2a3a'],8:['#555463','#646373','#474654'],12:['#170e20','#22142d','#100817']};
+  for (let t=1;t<=12;t++){
+    const c=document.createElement('canvas'); c.width=c.height=T; const g=c.getContext('2d');
+    const sp = (n,col,w=2,h=2,m=0) => { g.fillStyle=col; for (let k=0;k<n;k++) g.fillRect(m+Math.floor(r()*(T-2*m-w)/2)*2, m+Math.floor(r()*(T-2*m-h)/2)*2, w, h); };
+    if (base[t]){ g.fillStyle=base[t][0]; g.fillRect(0,0,T,T); sp(14,base[t][1]); sp(12,base[t][2]); }
+    if (t===1){ g.fillStyle='#2bbf78'; g.fillRect(0,0,T,5); g.fillStyle='#b6ff3f'; g.fillRect(0,0,T,2); for (let k=0;k<5;k++) g.fillRect(Math.floor(r()*11)*2,5,2,2+Math.floor(r()*3)*2); }
+    if (t===5){ g.fillStyle='#6b2d3a'; g.fillRect(0,0,T,T); g.fillStyle='#3a1820'; for (let row=0;row<4;row++){ g.fillRect(0,row*6+5,T,1); for (let x=(row%2?6:0);x<T;x+=12) g.fillRect(x,row*6,1,6); } g.fillStyle='#82404d'; sp(6,'#82404d'); }
+    if (t===6){ g.fillStyle='#6f7d8c'; g.fillRect(0,0,T,T); g.fillStyle='#93a2b2'; g.fillRect(1,1,T-2,2); g.fillStyle='#4b5663'; g.fillRect(1,T-3,T-2,2); g.fillStyle='#38414b'; [[4,5],[T-6,5],[4,T-7],[T-6,T-7]].forEach(([x,y])=>g.fillRect(x,y,2,2)); }
+    if (t===7){ sp(6,'#e07b39',3,3,2); sp(3,'#ffb070',2,2,3); }
+    if (t===8){ sp(5,'#a9b3bd',4,2,2); sp(3,'#7d4a3a',2,2,2); }
+    if (t>=9 && t<=11){ g.fillStyle='#2a2135'; g.fillRect(0,0,T,T); sp(8,'#33293f'); }
+    if (t===9){ g.fillStyle='#55506a'; g.fillRect(1,2,T-2,T-5); g.fillStyle='#14263a'; g.fillRect(3,4,T-9,T-10); g.fillStyle='#3ff0ff66'; g.fillRect(4,5,6,2); g.fillStyle='#ff3fa4'; g.fillRect(T-5,6,2,2); g.fillStyle='#b6ff3f'; g.fillRect(T-5,10,2,2); g.fillStyle='#55506a'; g.fillRect(4,T-3,3,3); g.fillRect(T-7,T-3,3,3); }
+    if (t===10){ g.fillStyle='#8a5a3a'; g.fillRect(1,7,T-2,T-9); g.fillStyle='#3a2418'; for (let y=10;y<T-4;y+=3) g.fillRect(3,y,10,1); g.fillStyle='#d9c27a'; g.beginPath(); g.arc(T-6,13,3,0,7); g.fill(); g.fillStyle='#b5b0c4'; g.fillRect(T-8,1,1,6); }
+    if (t===11){ g.fillStyle='#7c8494'; g.fillRect(3,3,T-6,12); g.fillStyle='#14263a'; g.fillRect(5,5,T-10,8); g.fillStyle='#3ff0ff77'; g.fillRect(6,6,5,2); g.fillStyle='#9aa2b2'; g.fillRect(1,16,T-2,4); g.fillStyle='#5d6575'; for (let x=3;x<T-3;x+=3) g.fillRect(x,17,2,1); }
+    SPR[t]=c;
+  }
+}
+let skyline=[], stars=[];
+function makeBackdrop(seed){
+  const r=mulberry(seed^0x5eed); skyline=[[],[]];
+  const neon=['#ff3fa4','#3ff0ff','#b6ff3f','#ffb23f'];
+  for (let L=0;L<2;L++){ let x=0; while (x<1800){ const w=40+r()*80, h=(L?90:150)+r()*(L?120:160), wins=[];
+      for (let k=0;k<h*w/500;k++) if (r()<.45) wins.push([4+Math.floor(r()*(w-10)/6)*6, 6+Math.floor(r()*(h-14)/9)*9, r()<.8?'#ffe9a8':neon[Math.floor(r()*4)]]);
+      skyline[L].push({x, w, h, wins, sign: r()<.25 ? neon[Math.floor(r()*4)] : null}); x += w + 6 + r()*30; } }
+  stars=[]; for (let k=0;k<90;k++) stars.push([r()*VW, r()*VH*.7, r()<.2?2:1]);
+}
+function drawBackdrop(cx, cy){
+  const sg=ctx.createLinearGradient(0,0,0,VH); sg.addColorStop(0,'#0a0620'); sg.addColorStop(1,'#2b0f3d');
+  ctx.fillStyle=sg; ctx.fillRect(0,0,VW,VH);
+  ctx.fillStyle='#d9d4ff'; for (const [x,y,s] of stars) ctx.fillRect(((x-cx*2)%VW+VW)%VW, y-cy*1.5, s, s);
+  ctx.fillStyle='#ffd9f0'; ctx.beginPath(); ctx.arc(820-cx*.8%40, 80-cy*2, 26, 0, 7); ctx.fill();
+  ctx.fillStyle='#2b0f3d'; ctx.beginPath(); ctx.arc(808-cx*.8%40, 74-cy*2, 22, 0, 7); ctx.fill();
+  const baseY=(25-cy)*T;
+  [[.15,'#1a1336',0],[.35,'#120d27',1]].forEach(([sp,col,L]) => {
+    for (const b of skyline[L]) for (const off of [0,-1800]){
+      const sx=((b.x - cx*T*sp)%1800+1800)%1800 + off - 120; if (sx>VW || sx+b.w<0) continue;
+      const top=baseY - b.h - (L?0:40);
+      ctx.fillStyle=col; ctx.fillRect(sx, top, b.w, b.h+400);
+      for (const [wx,wy,wc] of b.wins){ ctx.fillStyle=wc; ctx.globalAlpha=L?.55:.3; ctx.fillRect(sx+wx, top+wy, 3, 4); }
+      ctx.globalAlpha=1;
+      if (b.sign){ ctx.fillStyle=b.sign; ctx.fillRect(sx+8, top+14, Math.min(34,b.w-16), 8); }
+    } });
+}
+function connsOf(i){
+  const x=i%W, y=(i/W)|0, c=[0,0,0,0];
+  const chk=(nx,ny,d)=>{ if (nx<0||nx>=W||ny<0||ny>=H) return; const t=G.tiles[idx(nx,ny)]; if (t===ID.battery){ if (d<2) c[d]=1; return; } if (TILES[t].comp) c[d]=1; };
+  chk(x-1,y,0); chk(x+1,y,1); chk(x,y-1,2); chk(x,y+1,3);
+  if (G.tiles[i]===ID.transistor){ c[2]=0; c[3]=0; }
+  return c;
+}
+function rect(x,y,w,h){ ctx.fillRect(x,y,w,h); }
+function circ(x,y,r){ ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill(); }
+function drawComp(t, px, py, sc, cn, pw, st){
+  ctx.save(); ctx.translate(px,py); ctx.scale(sc,sc);
+  const wc = pw ? '#3ff0ff' : '#c87533';
+  if (cn && t!==ID.battery){ ctx.strokeStyle=wc; ctx.lineWidth=4; ctx.beginPath();
+    if (cn[0]){ctx.moveTo(12,12);ctx.lineTo(0,12);} if (cn[1]){ctx.moveTo(12,12);ctx.lineTo(24,12);}
+    if (cn[2]){ctx.moveTo(12,12);ctx.lineTo(12,0);} if (cn[3]){ctx.moveTo(12,12);ctx.lineTo(12,24);} ctx.stroke(); }
+  if (t===ID.wire){ ctx.fillStyle=wc; rect(9,9,6,6); if (!cn || !cn.some(Boolean)){ rect(3,10,18,4); } }
+  else if (t===ID.battery){
+    const flash = st==='short' && (now%.3<.15);
+    if (cn){ ctx.fillStyle='#c87533'; if (cn[0]) rect(0,10,3,4); if (cn[1]) rect(21,10,3,4); }
+    ctx.fillStyle = flash ? '#ff4040' : '#17603a'; rect(2,6,19,12);
+    ctx.fillStyle = flash ? '#ffb0b0' : (st==='ok' ? '#46ff8f' : '#2bb562'); rect(3,7,9,10);
+    ctx.fillStyle='#d7d7e0'; rect(21,9,2,6);
+    ctx.fillStyle='#fff'; ctx.font='bold 10px sans-serif'; ctx.textAlign='center'; ctx.fillText('+',17,16); ctx.fillText('−',7,16); }
+  else if (t===ID.switch){
+    ctx.fillStyle='#4a4a5e'; rect(3,14,18,6); ctx.fillStyle='#22222c'; rect(5,15,3,4); rect(16,15,3,4);
+    ctx.strokeStyle = st ? '#46ff8f' : '#ff4d6d'; ctx.lineWidth=3; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(12,16); ctx.lineTo(st?19:5,6); ctx.stroke(); ctx.lineCap='butt';
+    ctx.fillStyle=ctx.strokeStyle; circ(st?19:5,6,2.5); }
+  else if (t===ID.led){
+    ctx.fillStyle='#9a9aae'; rect(9,14,2,6); rect(13,14,2,6);
+    ctx.fillStyle = pw ? '#ff6ec0' : '#5a2340'; ctx.beginPath(); ctx.arc(12,10,5,Math.PI,0); ctx.lineTo(17,15); ctx.lineTo(7,15); ctx.fill();
+    if (pw){ ctx.fillStyle='#fff'; rect(10,7,2,2); } }
+  else if (t===ID.lamp){
+    ctx.fillStyle='#7a7688'; rect(8,16,8,5);
+    ctx.fillStyle = pw ? '#fff1b8' : '#4a4636'; circ(12,10,7);
+    ctx.strokeStyle = pw ? '#ffb23f' : '#6b6450'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(9,13); ctx.lineTo(10,8); ctx.lineTo(14,8); ctx.lineTo(15,13); ctx.stroke(); }
+  else if (t===ID.motor){
+    ctx.fillStyle='#343b4a'; circ(12,12,10); ctx.strokeStyle='#8892a6'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(12,12,10,0,7); ctx.stroke();
+    ctx.save(); ctx.translate(12,12); if (pw) ctx.rotate(now*12);
+    ctx.fillStyle = pw ? '#ffb23f' : '#6a6f7c';
+    for (let k=0;k<3;k++){ ctx.rotate(Math.PI*2/3); ctx.beginPath(); ctx.ellipse(0,-5,2.6,5,0,0,7); ctx.fill(); }
+    ctx.restore(); ctx.fillStyle='#d7d7e0'; circ(12,12,2); }
+  else if (t===ID.door){
+    if (st){ ctx.fillStyle='#5d6b7a'; rect(0,0,4,24); rect(20,0,4,24); ctx.fillStyle='#46ff8f'; rect(1,2,2,2); }
+    else { ctx.fillStyle='#5d6b7a'; rect(0,0,24,24); ctx.fillStyle='#4a5562'; rect(0,5,24,1); rect(0,18,24,1);
+      for (let k=0;k<6;k++){ ctx.fillStyle = k%2 ? '#1a1a1a' : '#ffcc33'; rect(k*4,10,4,4); }
+      ctx.fillStyle = pw ? '#46ff8f' : '#ff4d6d'; rect(11,1,2,2); } }
+  else if (t===ID.transistor){
+    ctx.fillStyle = st ? '#46ff8f' : '#8a7f9a'; rect(11,0,2,4); rect(11,20,2,4);
+    ctx.fillStyle='#9a9aae'; rect(8,15,2,5); rect(14,15,2,5);
+    ctx.fillStyle='#1d1d26'; ctx.beginPath(); ctx.moveTo(5,17); ctx.lineTo(5,11); ctx.arc(12,11,7,Math.PI,0); ctx.lineTo(19,17); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = st ? '#46ff8f' : '#4a4a5e'; rect(11,7,2,2);
+    ctx.fillStyle='#c9c6e0'; ctx.font='bold 7px sans-serif'; ctx.textAlign='center'; ctx.fillText('T',12,15); }
+  else if (t===ID.magnet){
+    ctx.fillStyle='#5d6575'; rect(3,3,18,2); rect(3,19,18,2); ctx.fillStyle='#7a8494'; rect(5,5,14,14);
+    ctx.fillStyle = pw ? '#ff9a4a' : '#b8612b'; for (let k=0;k<5;k++) rect(5,6+k*3,14,2);
+    if (pw){ ctx.strokeStyle='#7fa8ff'; ctx.lineWidth=1.5;
+      for (let k=0;k<3;k++){ const ph=(now*8+k*3)%9; ctx.globalAlpha=Math.max(0,.6-ph/15); ctx.beginPath(); ctx.arc(12,12,9+ph,0,7); ctx.stroke(); }
+      ctx.globalAlpha=1; } }
+  else if (t===ID.sensor){
+    ctx.fillStyle='#4a4a5e'; rect(5,15,14,6);
+    ctx.fillStyle='#e8e8f0'; ctx.beginPath(); ctx.arc(12,15,7,Math.PI,0); ctx.fill();
+    ctx.fillStyle = st ? '#ff3030' : '#6a2a2a'; circ(12,12,2);
+    if (st){ ctx.strokeStyle='#ff6060'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.arc(12,12,6,-2.5,-.6); ctx.stroke(); ctx.beginPath(); ctx.arc(12,12,9,-2.4,-.7); ctx.stroke(); } }
+  else if (t===ID.buzzer){
+    ctx.fillStyle='#1d1d26'; circ(12,12,8); ctx.fillStyle='#3a3a48'; circ(12,12,5); ctx.fillStyle='#0a0a10'; circ(12,12,2);
+    if (pw && now%.42<.22){ ctx.strokeStyle='#ffe14a'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(12,12,10,-.6,.6); ctx.stroke(); ctx.beginPath(); ctx.arc(12,12,10,Math.PI-.6,Math.PI+.6); ctx.stroke(); } }
+  ctx.restore();
+}
+function drawIcon(k, cx, cy, size){
+  const it=ITEMS[k], s=size/24, x=cx-size/2, y=cy-size/2;
+  if (it.tile && it.tile<=12) ctx.drawImage(SPR[it.tile], x, y, size, size);
+  else if (it.tile) drawComp(it.tile, x, y, s, null, k!=='wire', k==='battery'?'ok':true);
+  else { ctx.save(); ctx.translate(x,y); ctx.scale(s,s);
+    if (k==='copper'){ ctx.fillStyle='#b8612b'; circ(10,14,6); ctx.fillStyle='#e07b39'; circ(14,10,6); ctx.fillStyle='#ffb070'; rect(12,7,3,3); }
+    else { ctx.fillStyle='#7d8590'; ctx.beginPath(); ctx.moveTo(4,18); ctx.lineTo(8,6); ctx.lineTo(14,10); ctx.lineTo(20,4); ctx.lineTo(21,19); ctx.closePath(); ctx.fill(); ctx.fillStyle='#a9b3bd'; rect(9,9,4,3); ctx.fillStyle='#7d4a3a'; rect(15,13,3,3); }
+    ctx.restore(); }
+}
+function drawPlayer(){
+  const p=G.player; if (p.hurt>0 && Math.floor(p.hurt*14)%2) return;
+  const w=p.w*T, h=p.h*T, px=(p.x-cam.x)*T, py=(p.y-cam.y)*T;
+  ctx.save(); ctx.translate(px+w/2, py); ctx.scale(p.facing,1);
+  const walk = Math.abs(p.vx)>.5 && p.onGround ? Math.sin(now*14)*3 : 0;
+  ctx.fillStyle='#262b46'; rect(-6,h-12,5,12-Math.max(0,walk)); rect(1,h-12,5,12-Math.max(0,-walk));
+  ctx.fillStyle='#0f0f16'; rect(-7,h-3-Math.max(0,walk),6,3); rect(1,h-3-Math.max(0,-walk),6,3);
+  ctx.fillStyle='#6b4a2a'; rect(-11,h-26,4,12);
+  ctx.fillStyle='#1fa39a'; rect(-8,h-27,16,16); ctx.fillStyle='#ff3fa4'; rect(-8,h-27,16,2); rect(-1,h-25,2,14);
+  ctx.save(); ctx.translate(5,h-23); ctx.rotate(p.swing>0 ? -1.2+ (0.22-p.swing)*10 : .3);
+  ctx.fillStyle='#1fa39a'; rect(-2,0,4,9); ctx.fillStyle='#b9bdd0'; rect(-1,8,2,9); rect(-3,16,6,3); ctx.restore();
+  ctx.fillStyle='#e2a878'; rect(-6,h-39,12,12);
+  ctx.fillStyle='#2b1a12'; rect(-7,h-41,14,5); rect(-7,h-38,3,6);
+  ctx.fillStyle='#3ff0ff'; rect(-1,h-35,8,3); ctx.fillStyle='#ffffff'; rect(4,h-35,2,1);
+  ctx.restore();
+}
+function drawMob(m){
+  const px=(m.x-cam.x)*T, py=(m.y-cam.y)*T, w=m.w*T, h=m.h*T, f=m.hurt>0 || (m.held && now%.3<.08);
+  ctx.save(); ctx.translate(px,py);
+  if (m.type==='bot'){
+    const step = Math.abs(m.vx)>.3 ? Math.sin(m.t*12)*2 : 0;
+    ctx.fillStyle=f?'#fff':'#7a2a34'; rect(3,h-8,5,8+step); rect(w-8,h-8,5,8-step);
+    ctx.fillStyle=f?'#fff':'#a8394a'; rect(1,8,w-2,h-15);
+    ctx.fillStyle=f?'#fff':'#5b5f73'; rect(3,0,w-6,10);
+    ctx.fillStyle='#3ff0ff'; rect(5,3,w-10,3);
+    ctx.fillStyle='#ffe14a'; if (Math.floor(m.t*3)%2) rect(w/2-1,-5,2,2); ctx.fillStyle='#9a9aae'; rect(w/2-.5,-3,1,3);
+    ctx.fillStyle='#ffe14a'; rect(w/2-3,14,6,3);
+  } else {
+    ctx.fillStyle='#9a9aae'; const sp = Math.sin(m.t*40)*6;
+    rect(-2,0,8+sp/2,2); rect(w-6-sp/2,0,8+sp/2,2);
+    ctx.fillStyle=f?'#fff':'#3d4fa8'; ctx.beginPath(); ctx.ellipse(w/2,h/2+2,w/2,h/2,0,0,7); ctx.fill();
+    ctx.fillStyle='#ff4d6d'; circ(w/2,h/2+3,2.5);
+  }
+  ctx.restore();
+}
+function wrapText(text, maxW){
+  const words=text.split(' '), lines=[]; let cur='';
+  for (const w of words){ const t = cur ? cur+' '+w : w; if (ctx.measureText(t).width>maxW && cur){ lines.push(cur); cur=w; } else cur=t; }
+  if (cur) lines.push(cur); return lines;
+}
+function panel(x,y,w,h){ ctx.fillStyle='rgba(12,9,28,.85)'; ctx.fillRect(x,y,w,h); ctx.strokeStyle='#3a3366'; ctx.lineWidth=1; ctx.strokeRect(x+.5,y+.5,w-1,h-1); }
+function drawHeart(x,y,full){
+  ctx.fillStyle = full ? '#ff3fa4' : '#3a2440';
+  ctx.beginPath(); ctx.moveTo(x+9,y+16); ctx.lineTo(x+1,y+7); ctx.arc(x+5,y+5,4.5,Math.PI*.9,Math.PI*1.9); ctx.arc(x+13,y+5,4.5,Math.PI*1.1,Math.PI*.1); ctx.closePath(); ctx.fill();
+  if (full){ ctx.fillStyle='#ffc2e4'; rect(x+3,y+3,2,2); }
+}
+function hoverLabel(tx,ty){
+  if (tx<0||tx>=W||ty<0||ty>=H) return null;
+  const i=idx(tx,ty), t=G.tiles[i]; if (!t) return null;
+  const n=TILES[t].n;
+  if (t===ID.battery){ const s=batState.get(i);
+    if (G.power==='simple') return `${n}: ${s==='ok'?'connected':'nothing touching it yet'}`;
+    return `${n}: ${s==='ok'?'loop complete':s==='short'?'SHORT CIRCUIT':'no complete loop yet'} (+ right, − left)`; }
+  if (t===ID.transistor) return `${n}: ${trOn[i]?'on, current can pass left to right':'off. Power the wire on its top or bottom to turn it on'}`;
+  if (t===ID.sensor) return `${n}: ${sensHold[i]>0?'saw something move!':'watching for motion'}`;
+  if (t===ID.switch) return `${n}: ${G.meta[i]?'on':'off'} (right-click to flip)`;
+  if (TILES[t].load || t===ID.wire) return `${n}: ${powered[i]?'has power':'no power. Is it in a complete loop?'}`;
+  return n;
+}
+function draw(){
+  const cx=cam.x, cy=cam.y;
+  drawBackdrop(cx,cy);
+  const x0=Math.max(0,Math.floor(cx)), x1=Math.min(W-1,Math.ceil(cx+VW/T)), y0=Math.max(0,Math.floor(cy)), y1=Math.min(H-1,Math.ceil(cy+VH/T));
+  for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++){
+    const i=idx(x,y), t=G.tiles[i], px=Math.round((x-cx)*T), py=Math.round((y-cy)*T);
+    if (y>surfTop[x] && (t===0||TILES[t].comp)){ ctx.fillStyle='#1b1328'; ctx.fillRect(px,py,T,T); }
+    if (!t) continue;
+    if (t<=12) ctx.drawImage(SPR[t],px,py);
+    else drawComp(t,px,py,1,connsOf(i),powered[i], t===ID.battery?batState.get(i):t===ID.switch?G.meta[i]:t===ID.door?doorOpen[i]:t===ID.transistor?trOn[i]:t===ID.sensor?sensHold[i]>0:0);
+  }
+  if (G.mine){ const px=(G.mine.x-cx)*T, py=(G.mine.y-cy)*T, k=Math.floor(G.mine.p*4);
+    ctx.strokeStyle='rgba(0,0,0,.75)'; ctx.lineWidth=2; ctx.beginPath();
+    if (k>=0){ ctx.moveTo(px+12,py+12); ctx.lineTo(px+5,py+4); } if (k>=1){ ctx.moveTo(px+12,py+12); ctx.lineTo(px+20,py+7); }
+    if (k>=2){ ctx.moveTo(px+12,py+12); ctx.lineTo(px+8,py+21); } if (k>=3){ ctx.moveTo(px+12,py+12); ctx.lineTo(px+19,py+19); } ctx.stroke(); }
+  for (const m of mobs) drawMob(m);
+  drawPlayer();
+  for (const q of parts){ ctx.fillStyle=q.c; ctx.globalAlpha=Math.min(1,q.t*2); ctx.fillRect((q.x-cx)*T,(q.y-cy)*T,q.s,q.s); }
+  ctx.globalAlpha=1;
+  // darkness
+  const p=G.player, pcx=p.x+p.w/2, pcy=p.y+p.h*.4;
+  const vis=lights.filter(l => l.x>cx-10 && l.x<cx+VW/T+10 && l.y>cy-10 && l.y<cy+VH/T+10);
+  for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++){
+    const depth=y-surfTop[x]; let dark = depth<=0 ? .1 : Math.min(.88, .1+depth*.13);
+    if (dark>.1){
+      const dp=Math.hypot(x+.5-pcx, y+.5-pcy); if (dp<6) dark=Math.min(dark, .05+dp/6*.75);
+      for (const l of vis){ const d=Math.hypot(x+.5-l.x, y+.5-l.y); if (d<l.r) dark=Math.min(dark, d/l.r*.8); }
+    }
+    ctx.fillStyle=`rgba(4,3,12,${dark.toFixed(2)})`; ctx.fillRect(Math.round((x-cx)*T),Math.round((y-cy)*T),T,T);
+  }
+  ctx.globalCompositeOperation='lighter';
+  for (const l of vis){ const px=(l.x-cx)*T, py=(l.y-cy)*T, rr=l.r*T*.75; const g=ctx.createRadialGradient(px,py,0,px,py,rr);
+    g.addColorStop(0,`rgba(${l.c},.32)`); g.addColorStop(1,`rgba(${l.c},0)`); ctx.fillStyle=g; ctx.fillRect(px-rr,py-rr,rr*2,rr*2); }
+  ctx.globalCompositeOperation='source-over';
+  // cursor
+  const wx=cx+mouse.mx/T, wy=cy+mouse.my/T, tx=Math.floor(wx), ty=Math.floor(wy);
+  if (mouse.inside){
+    const inReach=Math.hypot(tx+.5-pcx, ty+.5-(p.y+p.h*.35))<=5.5;
+    ctx.strokeStyle = inReach ? 'rgba(255,255,255,.8)' : 'rgba(255,77,109,.6)'; ctx.lineWidth=2;
+    ctx.strokeRect(Math.round((tx-cx)*T)+1, Math.round((ty-cy)*T)+1, T-2, T-2);
+    if (G.mine){ const mx=(G.mine.x+.5-cx)*T, my=(G.mine.y+.5-cy)*T;
+      ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=5; ctx.beginPath(); ctx.arc(mx,my,17,0,7); ctx.stroke();
+      ctx.strokeStyle='#b6ff3f'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(mx,my,17,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,G.mine.p)); ctx.stroke(); }
+    const lab = hoverLabel(tx,ty);
+    if (lab){ ctx.font='600 13px "Chakra Petch",sans-serif'; const tw=ctx.measureText(lab).width+14, lx=clamp(mouse.mx+14,4,VW-tw-4), ly=clamp(mouse.my-30,40,VH-90);
+      panel(lx,ly,tw,22); ctx.fillStyle='#ece9ff'; ctx.textAlign='left'; ctx.fillText(lab,lx+7,ly+16); }
+  }
+  // floaties
+  ctx.font='700 13px "Chakra Petch",sans-serif'; ctx.textAlign='center';
+  for (const f of floaties){ ctx.globalAlpha=Math.min(1,f.t); ctx.fillStyle='#b6ff3f'; ctx.fillText(f.text,(f.x-cx)*T,(f.y-cy)*T); }
+  ctx.globalAlpha=1;
+  drawHUD();
+}
+function drawHUD(){
+  const p=G.player;
+  if (creative()){ ctx.font='700 15px "Chakra Petch",sans-serif'; ctx.textAlign='left'; ctx.fillStyle='#b6ff3f'; ctx.fillText('CREATIVE', 12, 26); }
+  else for (let k=0;k<5;k++) drawHeart(12+k*22, 12, k<p.hp);
+  if (G.power==='simple'){ ctx.font='600 12px "Chakra Petch",sans-serif'; ctx.textAlign='left'; ctx.fillStyle='#aaa5d6'; ctx.fillText('Simple electricity', 12, 46); }
+  ctx.font='600 13px "Chakra Petch",sans-serif'; ctx.textAlign='right'; ctx.fillStyle='#aaa5d6'; ctx.fillText(G.name, VW-12, 24);
+  if (muted) ctx.fillText('sound off (M)', VW-12, 42);
+  if (msg.t>0 && msg.text){ ctx.font='600 15px "Chakra Petch",sans-serif'; const lines=wrapText(msg.text, touchUI?470:620), h=lines.length*20+14, w=Math.min(touchUI?500:660,Math.max(...lines.map(l=>ctx.measureText(l).width))+28);
+    ctx.globalAlpha=Math.min(1,msg.t*2); panel((VW-w)/2, 40, w, h); ctx.fillStyle='#ece9ff'; ctx.textAlign='center';
+    lines.forEach((l,k)=>ctx.fillText(l, VW/2, 40+24+k*20)); ctx.globalAlpha=1; }
+  const n=9, sw=46, x0=(VW-n*sw)/2, y0=VH-56;
+  for (let k=0;k<n;k++){ const x=x0+k*sw, key=G.slots[k], c=creative() ? '∞' : (G.inv[key]||0);
+    ctx.fillStyle='rgba(12,9,28,.85)'; ctx.fillRect(x+2,y0,sw-4,46);
+    ctx.strokeStyle = k===G.sel ? '#ff3fa4' : '#3a3366'; ctx.lineWidth = k===G.sel ? 3 : 1; ctx.strokeRect(x+2.5,y0+.5,sw-5,45);
+    if (key){ ctx.globalAlpha = (c==='∞' || c>0) ? 1 : .3; drawIcon(key, x+sw/2, y0+21, 28); ctx.globalAlpha=1;
+      ctx.font='700 12px "Chakra Petch",sans-serif'; ctx.textAlign='right'; ctx.fillStyle='#ece9ff'; ctx.fillText(c, x+sw-6, y0+42); }
+    ctx.textAlign='left'; ctx.fillStyle='#aaa5d6'; ctx.font='600 10px sans-serif'; ctx.fillText(k+1, x+6, y0+12); }
+  const key=G.slots[G.sel];
+  if (key){ ctx.font='700 14px "Chakra Petch",sans-serif'; ctx.textAlign='center';
+    if (info.t>0 && info.key===key){ ctx.font='600 14px "Chakra Petch",sans-serif'; const lines=wrapText(`${ITEMS[key].name}: ${ITEMS[key].info}`, 560), h=lines.length*19+12, w=Math.max(...lines.map(l=>ctx.measureText(l).width))+26;
+      ctx.globalAlpha=Math.min(1,info.t*2); panel((VW-w)/2, y0-h-8, w, h); ctx.fillStyle='#ece9ff'; lines.forEach((l,k)=>ctx.fillText(l, VW/2, y0-h-8+21+k*19)); ctx.globalAlpha=1; }
+    else { ctx.fillStyle='#ece9ff'; ctx.fillText(ITEMS[key].name, VW/2, y0-8); } }
+}
+function drawAttract(){
+  const cx = now*1.5; drawBackdrop(cx, 8);
+  ctx.fillStyle='#1b1328'; ctx.fillRect(0,(25-8)*T+12,VW,VH);
+  for (let x=0;x<VW;x+=T) ctx.drawImage(SPR[1], x-(cx*T%T), (25-8)*T+12);
+}
+
+/* ---------- saving ---------- */
+const KEY='scrapcircuit.';
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); return true; } catch(e){ return false; } },
+  del(k){ try { localStorage.removeItem(k); } catch(e){} }
+};
+const storeOK = (() => { try { localStorage.setItem(KEY+'test','1'); localStorage.removeItem(KEY+'test'); return true; } catch(e){ return false; } })();
+function listWorlds(){ try { return JSON.parse(store.get(KEY+'worlds')||'[]'); } catch(e){ return []; } }
+function rle(a){ const o=[]; let prev=a[0], n=1; for (let i=1;i<a.length;i++){ if (a[i]===prev) n++; else { o.push(prev.toString(36)+'.'+n.toString(36)); prev=a[i]; n=1; } } o.push(prev.toString(36)+'.'+n.toString(36)); return o.join(','); }
+function unrle(s, len){ const a=new Uint8Array(len); let p=0; for (const seg of s.split(',')){ const [v,n]=seg.split('.'); const c=parseInt(n,36); a.fill(parseInt(v,36), p, p+c); p+=c; } if (p!==len) throw Error('size'); return a; }
+const SAVE_VERSION = 1;
+function serialize(){
+  const p=G.player, on=[]; for (let i=0;i<G.meta.length;i++) if (G.meta[i]) on.push(i);
+  return {game:'scrap-circuit', v:SAVE_VERSION, id:G.id, name:G.name, seed:G.seed, mode:G.mode, power:G.power, w:W, h:H, tiles:rle(G.tiles), on,
+    player:{x:p.x, y:p.y, hp:p.hp}, spawn:G.spawn, inv:G.inv, slots:G.slots, sel:G.sel, tipsDone:G.tipsDone, age:G.age, created:G.created, played:Date.now()};
+}
+function deserialize(d){
+  if (!d || d.game!=='scrap-circuit') throw Error('That is not a Scrap Circuit save code.');
+  // Future save versions get upgraded here, so old worlds keep working.
+  if (d.w!==W || d.h!==H) throw Error('That save is from a different world size.');
+  const meta=new Uint8Array(W*H); (d.on||[]).forEach(i => { if (i>=0 && i<W*H) meta[i]=1; });
+  const inv={}; for (const k of ITEM_ORDER) if (d.inv && d.inv[k]>0) inv[k]=Math.floor(d.inv[k]);
+  return {id:String(d.id||newId()), name:String(d.name||'Imported world').slice(0,24), seed:d.seed|0, tiles:unrle(d.tiles,W*H), meta,
+    mode: d.mode==='creative' ? 'creative' : 'survival', power: d.power==='simple' ? 'simple' : 'real',
+    player:mkPlayer(+d.player.x||10, +d.player.y||10, d.player.hp|0||5), spawn:d.spawn||{x:10,y:10}, inv,
+    slots:Array.isArray(d.slots)&&d.slots.length===9 ? d.slots.map(s=>ITEMS[s]?s:null) : DEFAULT_SLOTS.slice(),
+    sel:clamp(d.sel|0,0,8), tipsDone:d.tipsDone??TIPS.length, age:+d.age||999, created:d.created||Date.now()};
+}
+function saveWorld(){
+  if (!G) return false;
+  const ok = store.set(KEY+'w.'+G.id, JSON.stringify(serialize()));
+  const l = listWorlds().filter(w => w.id!==G.id); l.unshift({id:G.id, name:G.name, played:Date.now(), mode:G.mode, power:G.power}); store.set(KEY+'worlds', JSON.stringify(l));
+  return ok;
+}
+const toCode = d => 'SC1:' + btoa(unescape(encodeURIComponent(JSON.stringify(d))));
+function fromCode(s){ s=s.trim(); if (s.startsWith('SC1:')) s=decodeURIComponent(escape(atob(s.slice(4).replace(/\s/g,'')))); return JSON.parse(s); }
+
+/* ---------- world lifecycle ---------- */
+function startWorld(w){
+  G=w; mobs=[]; parts=[]; floaties=[]; G.mine=null; G.atkT=0; sensHold.fill(0); trOn.fill(0);
+  G.mode = G.mode || 'survival'; G.power = G.power || 'real';
+  document.documentElement.classList.toggle('creative', G.mode==='creative');
+  for (let x=0;x<W;x++) updSurf(x);
+  makeBackdrop(G.seed);
+  recomputePower();
+  const p=G.player; cam.x=clamp(p.x-VW/T/2,0,W-VW/T); cam.y=clamp(p.y-VH/T/2,0,H-VH/T);
+  spawnT=6; saveT=20; tipT=1.5; msg.t=0; info={key:G.slots[G.sel], t:0};
+  saveWorld(); showOv(null);
+}
+function newWorld(name, mode='survival', power='real'){
+  const seed=(Math.random()*2**31)|0, g=genWorld(seed);
+  startWorld({id:newId(), name:name||'Junkyard One', seed, mode, power, tiles:g.tiles, meta:new Uint8Array(W*H), player:mkPlayer(g.spawn.x,g.spawn.y,5), spawn:g.spawn,
+    inv:{wire:14, battery:1, switch:1, led:2, plate:4}, slots:DEFAULT_SLOTS.slice(), sel:0, tipsDone: mode==='creative' ? 2 : 0, age:0, created:Date.now()});
+  if (mode==='creative'){ say(touchUI ? 'Creative mode: everything is unlimited and nothing attacks. Hold ▲ to fly up and ▼ to go down.' : 'Creative mode: everything is unlimited and nothing attacks. Hold W to fly up and S to go down.', 8); tipT=9; }
+}
+function loadWorld(id){
+  const raw=store.get(KEY+'w.'+id); if (!raw){ renderMenu("Couldn't find that world's save."); return; }
+  try { startWorld(deserialize(JSON.parse(raw))); } catch(e){ renderMenu("That world's save is damaged. If you have a save code for it, load that."); }
+}
+function quitToMenu(){ saveWorld(); G=null; document.documentElement.classList.remove('creative'); showOv('menu'); renderMenu(); }
+
+/* ---------- overlays ---------- */
+let current='menu', helpReturn=null, codeReturn=null;
+function showOv(id){
+  current=id; document.querySelectorAll('.ov').forEach(o => o.classList.toggle('show', o.id===id));
+  paused = id!==null; for (const k in keys) keys[k]=false; mouse.l=mouse.r=false; activeTouch=null;
+  document.documentElement.classList.toggle('playing', !!G && id===null);
+  document.querySelectorAll('#touch .down').forEach(b => b.classList.remove('down'));
+}
+function ago(t){ const s=(Date.now()-t)/1000; if (s<90) return 'just now'; if (s<3600) return Math.round(s/60)+' min ago'; if (s<86400) return Math.round(s/3600)+' hr ago'; return Math.round(s/86400)+' days ago'; }
+function renderMenu(note){
+  const l=listWorlds();
+  $('worlds').innerHTML = l.length ? l.map(w => `<div class="world"><div class="nm"><b>${esc(w.name)}</b><div class="note">Last played ${esc(ago(w.played))}${w.mode==='creative'?' · Creative':''}${w.power==='simple'?' · Simple electricity':''}</div></div>
+    <button data-act="play" data-id="${esc(w.id)}">Play</button><button class="small" data-act="code" data-id="${esc(w.id)}">Save code</button><button class="small pink" data-act="del" data-id="${esc(w.id)}">Delete</button></div>`).join('')
+    : '<p class="note">No worlds yet. Name one above and press New world.</p>';
+  $('storeNote').textContent = note || (storeOK ? '' : "This browser isn't keeping saves for this page. Use Save code (in the pause menu) to back up your world.");
+}
+$('worlds').addEventListener('click', e => {
+  const b=e.target.closest('button'); if (!b) return; const id=b.dataset.id;
+  if (b.dataset.act==='play') loadWorld(id);
+  if (b.dataset.act==='code'){ const raw=store.get(KEY+'w.'+id); if (raw) openCode(JSON.parse(raw),'menu'); }
+  if (b.dataset.act==='del'){
+    if (b.dataset.sure){ store.del(KEY+'w.'+id); store.set(KEY+'worlds', JSON.stringify(listWorlds().filter(w=>w.id!==id))); renderMenu(); }
+    else { b.dataset.sure='1'; b.textContent='Sure? Delete'; setTimeout(()=>{ if (b.isConnected){ delete b.dataset.sure; b.textContent='Delete'; } }, 3000); }
+  }
+});
+$('newBtn').onclick = () => { initAudio();
+  const mode=document.querySelector('input[name=gmode]:checked').value, power=document.querySelector('input[name=pmode]:checked').value;
+  newWorld($('newName').value.trim(), mode, power); $('newName').value=''; };
+$('newName').addEventListener('keydown', e => { if (e.key==='Enter') $('newBtn').click(); });
+function importText(s){
+  try { const w=deserialize(fromCode(s)); if (listWorlds().some(x=>x.id===w.id)){ w.id=newId(); w.name=(w.name+' copy').slice(0,24); }
+    $('importText').value=''; $('importMsg').textContent=''; initAudio(); startWorld(w);
+  } catch(e){ $('importMsg').textContent = e.message && e.message.includes('Scrap Circuit') ? e.message : "That code didn't work. Make sure you copied all of it."; }
+}
+$('importBtn').onclick = () => importText($('importText').value);
+$('importFile').onchange = e => { const f=e.target.files[0]; if (!f) return; f.text().then(importText); e.target.value=''; };
+function openCode(d, ret){ codeReturn=ret; $('codeText').value=toCode(d); $('copyMsg').textContent=''; showOv('code'); }
+$('copyBtn').onclick = () => { const t=$('codeText'); t.select();
+  try { navigator.clipboard.writeText(t.value).then(()=>$('copyMsg').textContent='Copied.', ()=>$('copyMsg').textContent='Copy failed. Select the text and copy it yourself.'); }
+  catch(e){ $('copyMsg').textContent='Select the text and copy it yourself.'; } };
+$('codeBack').onclick = () => showOv(codeReturn);
+$('resumeBtn').onclick = () => showOv(null);
+$('pauseCodeBtn').onclick = () => { saveWorld(); openCode(serialize(),'pause'); };
+$('quitBtn').onclick = quitToMenu;
+$('helpBtn').onclick = () => { if (current==='help') return; helpReturn = G ? (current||null) : 'menu'; showOv('help'); };
+$('helpClose').onclick = () => showOv(helpReturn);
+$('fsBtn').onclick = () => { try { if (document.fullscreenElement) document.exitFullscreen(); else $('wrap').requestFullscreen().catch(()=>{}); } catch(e){} };
+document.addEventListener('fullscreenchange', () => { $('fsBtn').textContent = document.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen'; });
+if (!document.fullscreenEnabled) $('fsBtn').style.display='none';
+
+let craftMsgT=0;
+function needStr(r){ return Object.entries(r.need).map(([k,n]) => `${n} ${ITEMS[k].name}`).join(' + '); }
+function canMake(r){ return Object.entries(r.need).every(([k,n]) => (G.inv[k]||0)>=n); }
+function iconCanvases(root){ root.querySelectorAll('canvas[data-icon]').forEach(c => { const save=ctx; ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height); drawIcon(c.dataset.icon, c.width/2, c.height/2, c.width-6); ctx=save; }); }
+function renderCraft(){
+  $('slotRow').innerHTML = G.slots.map((s,k) => `<button class="${k===G.sel?'sel':''}" data-slot="${k}" aria-label="Hotbar slot ${k+1}">${k+1}<br>${s?esc(ITEMS[s].name.split(' ')[0]):'·'}</button>`).join('');
+  const cre = creative();
+  const have = cre ? ITEM_ORDER.filter(k => ITEMS[k].tile) : ITEM_ORDER.filter(k => G.inv[k]>0);
+  $('invGrid').innerHTML = have.length ? have.map(k => `<button data-k="${k}"><canvas width="36" height="36" data-icon="${k}"></canvas><span>${esc(ITEMS[k].name)}</span><b>${cre?'∞':G.inv[k]}</b></button>`).join('') : '<p class="note">Empty. Go dig something up!</p>';
+  if (cre){ $('recipes').innerHTML = '<p class="note">Creative mode: everything is unlimited, so there is nothing to make. Put any part in your hotbar on the left.</p>'; iconCanvases($('craft')); return; }
+  $('recipes').innerHTML = RECIPES.map((r,i) => `<div class="recipe"><canvas width="40" height="40" data-icon="${r.out}"></canvas>
+    <div><b>${r.n>1?r.n+' ':''}${esc(ITEMS[r.out].name)}</b><div class="note">Needs ${esc(needStr(r))}</div>${r.why?`<div class="note why">${esc(r.why)}</div>`:''}</div>
+    <button class="small ${canMake(r)?'':'lack'}" data-r="${i}">Make</button></div>`).join('');
+  iconCanvases($('craft'));
+}
+function openCraft(){ showOv('craft'); $('craftMsg').textContent=''; renderCraft(); }
+$('craftClose').onclick = () => showOv(null);
+$('craft').addEventListener('click', e => {
+  const b=e.target.closest('button'); if (!b || !G) return;
+  if (b.dataset.slot){ G.sel=+b.dataset.slot; renderCraft(); }
+  else if (b.dataset.k){ G.slots[G.sel]=b.dataset.k; $('craftMsg').textContent=`${ITEMS[b.dataset.k].name} is in slot ${G.sel+1}.`; renderCraft(); }
+  else if (b.dataset.r){ const r=RECIPES[+b.dataset.r];
+    if (canMake(r)){ for (const [k,n] of Object.entries(r.need)) G.inv[k]-=n; G.inv[r.out]=(G.inv[r.out]||0)+r.n; tone(700,.06,'triangle'); setTimeout(()=>tone(940,.08,'triangle'),70);
+      $('craftMsg').textContent=`Made ${r.n>1?r.n+' ':''}${ITEMS[r.out].name}.`; recomputePower(); renderCraft(); }
+    else { const miss=Object.entries(r.need).filter(([k,n])=>(G.inv[k]||0)<n).map(([k,n])=>`${n-(G.inv[k]||0)} more ${ITEMS[k].name}`); $('craftMsg').textContent=`You need ${miss.join(' and ')}.`; } }
+});
+
+/* ---------- input ---------- */
+function selectSlot(k){ G.sel=(k+9)%9; info={key:G.slots[G.sel], t:4}; }
+window.addEventListener('keydown', e => {
+  if (e.target.matches && e.target.matches('input,textarea')) return;
+  const k=e.key.toLowerCase();
+  if (k==='escape'){ if (!G) { if (current==='help') showOv('menu'); return; }
+    if (current===null){ saveWorld(); showOv('pause'); } else if (current==='craft'||current==='pause') showOv(null); else if (current==='help') showOv(helpReturn); else if (current==='code') showOv(codeReturn); return; }
+  if (!G) return;
+  if (k==='c'){ if (current===null) openCraft(); else if (current==='craft') showOv(null); return; }
+  if (k==='h'){ if (current===null){ helpReturn=null; showOv('help'); } else if (current==='help') showOv(helpReturn); return; }
+  if (current!==null) return;
+  if (k==='m'){ muted=!muted; return; }
+  if (k>='1' && k<='9'){ selectSlot(+k-1); return; }
+  if ([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) e.preventDefault();
+  if (k==='w'||k===' '||k==='arrowup') jumpBuf=.15;
+  keys[k]=true;
+});
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()]=false; });
+window.addEventListener('blur', () => { for (const k in keys) keys[k]=false; mouse.l=mouse.r=false; });
+function setMouse(e){ const r=cv.getBoundingClientRect(); mouse.mx=(e.clientX-r.left)*VW/r.width; mouse.my=(e.clientY-r.top)*VH/r.height; }
+function mouseTile(){ return [Math.floor(cam.x+mouse.mx/T), Math.floor(cam.y+mouse.my/T)]; }
+function hotbarSlotAt(mx,my){ const sw=46, x0=(VW-9*sw)/2; if (my<VH-58 || my>VH-8 || mx<x0 || mx>=x0+9*sw) return -1; return Math.floor((mx-x0)/sw); }
+cv.addEventListener('pointerdown', e => {
+  initAudio(); if (AC && AC.state==='suspended') AC.resume().catch(()=>{});
+  if (!G || paused) return;
+  const touch = e.pointerType==='touch';
+  if (touch && activeTouch!==null) return;
+  setMouse(e); mouse.inside=true;
+  const slot = hotbarSlotAt(mouse.mx, mouse.my); if (slot>=0){ selectSlot(slot); return; }
+  try { cv.setPointerCapture(e.pointerId); } catch(_){}
+  if (touch) activeTouch=e.pointerId;
+  let btn = touch ? (touchMode==='build' ? 2 : 0) : e.button;
+  if (touch && btn===2){ // in Build, pressing a bot bonks it and holding a placed thing picks it up
+    const [tx,ty]=mouseTile(), t=tileAt(tx,ty);
+    if (mobAt(cam.x+mouse.mx/T, cam.y+mouse.my/T) || (t && t!==ID.switch && ty>=0)) btn=0; }
+  if (btn===0){ mouse.l=true; mouse.lPress=true; }
+  if (btn===2){ mouse.r=true; const [tx,ty]=mouseTile(); tryPlace(tx,ty,true); mouse.lastPlace=idx(tx,ty); }
+});
+cv.addEventListener('pointermove', e => {
+  if (e.pointerType==='touch' && e.pointerId!==activeTouch) return;
+  setMouse(e); mouse.inside=true;
+  if (G && !paused && mouse.r){ const [tx,ty]=mouseTile(), i=idx(tx,ty); if (i!==mouse.lastPlace){ tryPlace(tx,ty,false); mouse.lastPlace=i; } } });
+function canvasUp(e){
+  if (e.pointerType==='touch'){ if (e.pointerId!==activeTouch) return; activeTouch=null; mouse.l=false; mouse.r=false; mouse.lastPlace=-1; return; }
+  if (e.button===0) mouse.l=false; if (e.button===2){ mouse.r=false; mouse.lastPlace=-1; }
+}
+cv.addEventListener('pointerup', canvasUp);
+cv.addEventListener('pointercancel', canvasUp);
+cv.addEventListener('pointerleave', e => { if (e.pointerType!=='touch') mouse.inside=false; });
+
+/* touch controls: they fire the same keyboard events the keys do */
+function setTouchUI(on){ if (touchUI===on) return; touchUI=on; document.documentElement.classList.toggle('touch', on); }
+setTouchUI(matchMedia('(pointer: coarse)').matches);
+window.addEventListener('pointerdown', e => { if (e.pointerType==='touch') setTouchUI(true); else if (e.pointerType==='mouse') setTouchUI(false); }, true);
+const fireKey = (type, key) => window.dispatchEvent(new KeyboardEvent(type, {key, bubbles:true}));
+document.querySelectorAll('#touch button[data-key]').forEach(b => {
+  const key=b.dataset.key, tap=!!b.dataset.tap;
+  b.addEventListener('pointerdown', e => { e.preventDefault(); initAudio();
+    try { b.setPointerCapture(e.pointerId); } catch(_){}
+    b.classList.add('down'); fireKey('keydown', key); if (tap) fireKey('keyup', key); });
+  const up = () => { if (!b.classList.contains('down')) return; b.classList.remove('down'); if (!tap) fireKey('keyup', key); };
+  b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
+  b.addEventListener('contextmenu', e => e.preventDefault());
+});
+function setTouchMode(m){
+  if (touchMode===m) return; touchMode=m;
+  $('tDig').classList.toggle('on', m==='dig'); $('tBuild').classList.toggle('on', m==='build');
+  if (G) say(m==='dig' ? 'Dig: hold on something to dig it up or bonk a bot.' : 'Build: tap to place, drag to lay wire, tap a switch to flip it. Hold on a part to pick it back up.', 3);
+  tone(m==='dig'?400:600,.05,'triangle');
+}
+$('tDig').addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); setTouchMode('dig'); });
+$('tBuild').addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); setTouchMode('build'); });
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('wheel', e => { if (!G || paused) return; e.preventDefault(); selectSlot(G.sel + (e.deltaY>0?1:-1)); }, {passive:false});
+document.addEventListener('visibilitychange', () => { if (document.hidden && G){ saveWorld(); if (current===null) showOv('pause'); } });
+window.addEventListener('pagehide', () => saveWorld());
+
+/* ---------- go ---------- */
+makeSprites(); makeBackdrop(1); renderMenu();
+let last=performance.now();
+function frame(t){ const dt=Math.min(.05,(t-last)/1000); last=t; now+=dt;
+  try { if (G){ if (!paused) update(dt); draw(); } else drawAttract(); } catch(err){ console.error(err); }
+  requestAnimationFrame(frame); }
+requestAnimationFrame(frame);
+window.__sc = { get G(){ return G; }, powered:()=>powered, batState:()=>batState, recomputePower, tryPlace, breakTile, saveWorld, listWorlds, idx, ID, newWorld, loadWorld, quitToMenu, serialize, toCode, fromCode, importText, get mobs(){return mobs;}, spawnMob, cam };
+}
+</script>
+</body>
+</html>
